@@ -1,0 +1,32 @@
+#include "hwsgguideline.h"
+
+HWGuideLine::HWGuideLine(QQuickItem* parent)
+    : QQuickItem(parent) {
+    setFlag(ItemHasContents, true);
+
+    if (parent) {
+        QObject::connect(parent, &QQuickItem::widthChanged, this,
+                         &HWGuideLine::resize);
+    }
+}
+
+void
+HWGuideLine::classBegin() {
+}
+
+void
+HWGuideLine::componentComplete() {
+
+}
+
+void
+HWGuideLine::resize() {
+    QQuickItem* parent = parentItem();
+
+    if (parent) {
+        setWidth(parent->width());
+        setHeight(parent->height());
+
+        update();
+    }
+}

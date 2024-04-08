@@ -1,0 +1,3 @@
+#include <QMutex>
+
+QMutex mutex;
