@@ -3,6 +3,7 @@
 #include <hwsettings.h>
 
 #include <QQmlEngine>
+#include <QQuickWindow>
 
 #include "strokegeometrynode.h"
 
@@ -23,6 +24,24 @@ HWCanvas::classBegin() {
     }
 
     m_contentNode.setPalette(pcolors);
+}
+
+void
+HWCanvas::componentComplete() {
+    QQuickItem::componentComplete();
+
+    auto init = [=](QQuickWindow* window) {
+        QObject::connect(window, &QQuickWindow::beforeSynchronizing, this,
+            [=]() { m_contentNode.renderBuffer(); }, Qt::DirectConnection);
+    };
+
+    if (window())
+        init(window());
+    else
+        QObject::connect(this, &QQuickItem::windowChanged, this,
+                         [=](QQuickWindow* window) {
+                             if (window) init(window);
+                         });
 }
 
 QList<QColor>
@@ -142,8 +161,6 @@ HWCanvas::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
         oldNode->appendChildNode(&m_contentNode);*/
         oldNode = &m_contentNode;
     }
-
-    m_contentNode.renderBuffer();
 
     return oldNode;
 }

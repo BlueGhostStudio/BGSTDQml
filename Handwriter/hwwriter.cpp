@@ -39,7 +39,7 @@ HWWriter::classBegin() {
 
 void
 HWWriter::componentComplete() {
-    QQuickItem::componentComplete();
+    HWCanvas::componentComplete();
 
     QObject::connect(this, &HWWriter::scaleChanged, this,
                      &HWWriter::cumulativeScale);

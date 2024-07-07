@@ -27,6 +27,7 @@ public:
     HWCanvas(QQuickItem* parent = nullptr);
 
     void classBegin() override;
+    void componentComplete() override;
 
     QList<QColor> canvasPalette() const override;
     void setCanvasPalette(const QList<QColor>& palette) override;
