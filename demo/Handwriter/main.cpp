@@ -12,8 +12,6 @@ main(int argc, char* argv[]) {
 
     QGuiApplication::setFont(QFont("Noto Sans"));
 
-    qDebug() << app.platformName();
-
     if (app.platformName() != "android") {
         QSurfaceFormat format;
         format.setSamples(4);  // 设置抗锯齿级别，例如4x
@@ -26,6 +24,8 @@ main(int argc, char* argv[]) {
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         []() { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
     engine.load(url);
+
+    qDebug() << "sceneGraphBackend" << QQuickWindow::sceneGraphBackend();
 
     return app.exec();
 }

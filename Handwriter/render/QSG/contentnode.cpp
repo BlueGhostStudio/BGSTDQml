@@ -4,13 +4,23 @@
 #include <QSGSimpleRectNode>
 
 // #include "hwcanvas.h"
-#include "strokegeometrynode.h"
 
 ContentNode::ContentNode() {
     // setFlag(QSGNode::UsePreprocess, true);
     setFlag(QSGNode::OwnedByParent, false);
     setFlag(QSGNode::OwnsGeometry, false);
     setFlag(QSGNode::OwnsMaterial, false);
+
+    m_activeWritingStrokeNodes.setFlag(QSGNode::OwnedByParent, false);
+    m_activeWritingStrokeNodes.setFlag(QSGNode::OwnsGeometry, false);
+    m_activeWritingStrokeNodes.setFlag(QSGNode::OwnsMaterial, false);
+    appendChildNode(&m_activeWritingStrokeNodes);
+
+    m_inactiveWritingStrokeNodes.setFlag(QSGNode::OwnedByParent, false);
+    m_inactiveWritingStrokeNodes.setFlag(QSGNode::OwnsGeometry, false);
+    m_inactiveWritingStrokeNodes.setFlag(QSGNode::OwnsMaterial, false);
+
+    setActiveNodes(1);
 }
 
 ContentNode::~ContentNode() { clear(); }
@@ -24,23 +34,51 @@ extern QMutex mutex;
 
 void
 ContentNode::clear() {
-    QMutexLocker locker(&mutex);
-    m_strokesBuffer.clear();
-    m_requestRenderBuffer = false;
+    // QMutexLocker locker(&mutex);
+    /*m_strokesBuffer.clear();
+    m_requestRenderBuffer = false;*/
     m_requestClear = true;
 }
 
 void
-ContentNode::addStroke(const Stroke& stroke) {
-    QMutexLocker locker(&mutex);
+ContentNode::addPendingRenderNode(const Stroke& stroke) {
+    // QMutexLocker locker(&mutex);
     // updateRange(stroke);
-    m_strokesBuffer.append(stroke);
-    m_requestRenderBuffer = true;
+    // m_strokesBuffer.append(stroke);
+    // m_requestRenderBuffer = true;
+    StrokeGeometryNode* node = new StrokeGeometryNode(stroke);
+    node->setMaterial(!m_dark ? &m_materialPalette[stroke.color]
+                              : &m_materialDarkPalette[stroke.color]);
+    m_pendingRenderNodes.append(node);
 }
 
 void
-ContentNode::renderBuffer() {
-    QMutexLocker locker(&mutex);
+ContentNode::prepareRender() {
+    // QMutexLocker locker(&mutex);
+
+    if (m_requestClear) {
+        /*while (childCount() > 0) {
+            QSGNode* node = lastChild();
+            removeChildNode(node);
+            delete node;
+        }*/
+        m_activeWritingStrokeNodes.removeAllChildNodes();
+        m_inactiveWritingStrokeNodes.removeAllChildNodes();
+        m_requestClear = false;
+    }
+
+    bool willHide = m_activeWritingStrokeNodes.childCount() > 1024;
+    while(!m_pendingRenderNodes.isEmpty()) {
+        if(willHide) {
+            QSGNode* firstChildNode = m_activeWritingStrokeNodes.firstChild();
+            m_activeWritingStrokeNodes.removeChildNode(firstChildNode);
+            m_inactiveWritingStrokeNodes.appendChildNode(firstChildNode);
+        }
+        QSGNode* node = m_pendingRenderNodes.takeFirst();
+        m_activeWritingStrokeNodes.appendChildNode(node);
+        // m_strokeNodesPool.appendChildNode(node);
+    }
+    /*QMutexLocker locker(&mutex);
 
     if (m_requestClear) {
         while (childCount() > 0) {
@@ -62,12 +100,12 @@ ContentNode::renderBuffer() {
         }
 
         m_requestRenderBuffer = false;
-    }
+    }*/
 }
 
 bool
 ContentNode::isRequestRenderBuffer() const {
-    return m_requestRenderBuffer;
+    return false;  // m_requestRenderBuffer;
 }
 
 void
@@ -100,3 +138,28 @@ bool
 ContentNode::isDark() const {
     return m_dark;
 }
+
+void
+ContentNode::setActiveNodes(int active) {
+    if (m_activeNodes != active) {
+        m_activeNodes = active;
+
+        if (m_activeNodes == 0)
+            removeChildNode(&m_inactiveWritingStrokeNodes);
+        else
+            appendChildNode(&m_inactiveWritingStrokeNodes);
+    }
+}
+
+int
+ContentNode::activeNodes() const {
+    return m_activeNodes;
+}
+
+/*QSGNode*
+ContentNode::activeNodesNode() {
+    if (m_activeNodes == 0) {
+        return &m_activeWritingStrokeNodes;
+    } else
+        return this;
+}*/

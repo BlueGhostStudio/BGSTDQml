@@ -7,6 +7,8 @@
 
 #include "strokegeometrynode.h"
 
+extern QMutex mutex;
+
 HWCanvas::HWCanvas(QQuickItem* parent) : QQuickItem(parent) {
     setFlag(ItemHasContents, true);
     setClip(true);
@@ -32,7 +34,7 @@ HWCanvas::componentComplete() {
 
     auto init = [=](QQuickWindow* window) {
         QObject::connect(window, &QQuickWindow::beforeSynchronizing, this,
-            [=]() { m_contentNode.renderBuffer(); }, Qt::DirectConnection);
+            [=]() { m_contentNode.prepareRender(); }, Qt::DirectConnection);
     };
 
     if (window())
@@ -69,6 +71,21 @@ HWCanvas::setDarkPalette(bool dark) {
     }
 }
 
+HWCanvas::StrokeVisible
+HWCanvas::activeNodes() const {
+    return (HWCanvas::StrokeVisible)m_contentNode.activeNodes();
+}
+
+void
+HWCanvas::setActiveNodes(const HWCanvas::StrokeVisible& activeNodes) {
+    if (activeNodes != m_activeNodes) {
+        m_activeNodes = activeNodes;
+        emit activeNodesChanged();
+
+        update();
+    }
+}
+
 /*void
 HWCanvas::setByDevicePixelRatio(bool) {
     emit byDevicePixelRatioChanged();
@@ -83,7 +100,8 @@ void
 HWCanvas::clear() {
     resetRange();
     m_contentNode.clear();
-    updateCanvas();
+    update();
+    // updateCanvas();
 
     emit cleared();
     emit rangeChanged();
@@ -149,18 +167,27 @@ HWCanvas::drawStroke(Stroke stroke, bool dpi) {
         stroke.preSize *= r;
     }
     updateRange(stroke);
-    m_contentNode.addStroke(stroke);
+    m_contentNode.addPendingRenderNode(stroke);
     update();
 }
 
 QSGNode*
 HWCanvas::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
-    if (!oldNode) {
-        /*oldNode = new QSGNode;
-
-        oldNode->appendChildNode(&m_contentNode);*/
+    // qDebug() << "updatePaintNode" << mapRectFromScene(boundingRect());
+    /*if (!oldNode)
         oldNode = &m_contentNode;
-    }
+
+    return oldNode;*/
+    m_contentNode.setActiveNodes(m_activeNodes);
+
+    if (!oldNode)
+        oldNode = &m_contentNode;
 
     return oldNode;
+
+    /*QSGNode* activeNodes = m_contentNode.activeNodesNode();
+    if (!oldNode || oldNode != activeNodes)
+        oldNode = activeNodes;
+
+    return oldNode;*/
 }

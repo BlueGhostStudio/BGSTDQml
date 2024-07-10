@@ -43,21 +43,22 @@ ApplicationWindow {
         paper.paperSizeMm: "60x110"
         paper.background: Image {
             // fillMode: Image.Tile
-            source: "qrc:/qt/qml/BGStudio/Handwriter/imgs/fabric_grid.png"
+            source: "qrc:/qt/qml/BGStudio/Handwriter/imgs/fabric_line.png"
         }
 
         canvas: HWWriter {
             // strokeColor: topDrawer.strokeColor
             // darkPalette: window.BGControls.foreground.hslLightness >= 0.5
             // guideLine.visible: viewport.paper.scale > 1
+            activeNodes: viewport.zoomed ? HWCanvas.VisibleActiveWriting : HWCanvas.VisibleAllStroke
             // guideLine.visible: true
             guideLine.guideLine: {
-                "type": 0,
-                "spacingMm": 4,
+                "type": 1,
+                "spacingMm": 2,
                 "lineHeightMm": 4,
-                "horizontalPadding": 0.5,
-                "topPadding": 2,
-                "bottomPadding": 2,
+                "horizontalPadding": 4,
+                "topPadding": 9,
+                "bottomPadding": 4,
                 "color": "#999999"
             }
         }
@@ -108,6 +109,8 @@ ApplicationWindow {
         target: NavigatorToolbars
         function onClear() {
             viewport.canvas.clear()
+            /*viewport.canvas.activeNodes = viewport.canvas.activeNodes == HWCanvas.VisibleAllStroke
+                    ? HWCanvas.VisibleActiveWriting : HWCanvas.VisibleAllStroke*/
         }
         function onOpenStrokeAdjustmentDrawer() {
             rightDrawer.open()

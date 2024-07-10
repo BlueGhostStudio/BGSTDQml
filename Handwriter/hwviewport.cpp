@@ -1,9 +1,11 @@
 #include "hwviewport.h"
 
 #include <QQmlComponent>
+
 #include "hwgesturearea.h"
 
 HWViewport::HWViewport(QQuickItem* parent) : QQuickItem(parent) {
+    setFlag(QQuickItem::ItemIsViewport, true);
     /*m_qmlEngine = qmlEngine(this);
 
     m_context = new QQmlContext(m_qmlEngine, this);
@@ -142,13 +144,13 @@ P.GestureArea {
 )QML",
                            QUrl());
 
-    m_gestureArea = qobject_cast<QQuickItem*>(cmpGestureArea.create(m_context));*/
+    m_gestureArea =
+qobject_cast<QQuickItem*>(cmpGestureArea.create(m_context));*/
     m_gestureArea = new HWGestureArea(this);
     m_gestureArea->classBegin();
-    QObject::connect(m_gestureArea, &HWGestureArea::isGestureInProgressChanged, this,
-                     [=]() {
-                         setPanAniEnabled(!m_gestureArea->isGestureInProgress());
-                     });
+    QObject::connect(
+        m_gestureArea, &HWGestureArea::isGestureInProgressChanged, this,
+        [=]() { setPanAniEnabled(!m_gestureArea->isGestureInProgress()); });
     emit gestureAreaChanged();
 
     QObject::connect(this, &QQuickItem::widthChanged, this, [=]() {
@@ -157,12 +159,10 @@ P.GestureArea {
     QObject::connect(this, &QQuickItem::heightChanged, this, [=]() {
         if (m_paper) clampPositionY(m_paper->y());
     });
-    QObject::connect(m_paper, &HWPaper::widthChanged, this, [=]() {
-        clampPositionX(m_paper->x());
-    });
-    QObject::connect(m_paper, &HWPaper::heightChanged, this, [=]() {
-        clampPositionY(m_paper->y());
-    });
+    QObject::connect(m_paper, &HWPaper::widthChanged, this,
+                     [=]() { clampPositionX(m_paper->x()); });
+    QObject::connect(m_paper, &HWPaper::heightChanged, this,
+                     [=]() { clampPositionY(m_paper->y()); });
 }
 
 HWPaper*
@@ -236,7 +236,7 @@ HWViewport::panLeft(qreal dx, qreal margin) {
 
 void
 HWViewport::zoom(qreal zoom, qreal zoomCenterX, qreal zoomCenterY) {
-    //qreal newScale = qMax(zoom * 100, 1.00);
+    // qreal newScale = qMax(zoom * 100, 1.00);
     if (zoom != m_paper->scale()) {
         qreal scaleFactor = zoom / m_paper->scale();
         m_paper->setScale(zoom);
@@ -291,7 +291,7 @@ HWViewport::zoomFactor() const {
 void
 HWViewport::setZoomFactor(qreal zoomFactor) {
     if (qFuzzyCompare(zoomFactor, m_zoomFactor)) return;
-    m_zoomFactor= zoomFactor;
+    m_zoomFactor = zoomFactor;
     emit zoomFactorChanged();
 }
 

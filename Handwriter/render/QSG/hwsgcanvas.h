@@ -22,9 +22,14 @@ class HWCanvas : public QQuickItem, public HWCanvasBase {
                    setByDevicePixelRatio NOTIFY byDevicePixelRatioChanged)*/
 
     Q_PROPERTY(QRectF range READ range NOTIFY rangeChanged)
+    Q_PROPERTY(StrokeVisible activeNodes READ activeNodes WRITE setActiveNodes
+                   NOTIFY activeNodesChanged)
 
 public:
     HWCanvas(QQuickItem* parent = nullptr);
+
+    enum StrokeVisible { VisibleActiveWriting, VisibleAllStroke };
+    Q_ENUM(StrokeVisible)
 
     void classBegin() override;
     void componentComplete() override;
@@ -37,6 +42,9 @@ public:
 
     /*void setByDevicePixelRatio(bool) override;
     bool byDevicePixelRatio() const override;*/
+
+    StrokeVisible activeNodes() const;
+    void setActiveNodes(const StrokeVisible& newActiveNodes);
 
     Q_INVOKABLE void clear() override;
     Q_INVOKABLE void drawStroke(const QVariant& varStroke,
@@ -59,6 +67,8 @@ signals:
     void cleared();
     void rangeChanged();
 
+    void activeNodesChanged();
+
     void strokesUpdated();
 
 protected:
@@ -71,6 +81,7 @@ protected:
 
 private:
     ContentNode m_contentNode;
+    StrokeVisible m_activeNodes = VisibleAllStroke;
 };
 
 #endif  // HWSGCANVAS_H
