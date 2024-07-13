@@ -5,6 +5,16 @@
 
 #include <dataconversion.h>
 
+namespace HWCVType {
+Q_NAMESPACE
+enum ContentVisible {
+    VisibleViewportOnly,
+    VisibleFullContent,
+    VisibleLine
+};
+Q_ENUM_NS(ContentVisible)
+}
+
 class HWCanvasBase {
 public:
     HWCanvasBase();
@@ -26,8 +36,12 @@ public:
 
     virtual void clear() = 0;
     virtual void drawStroke(const QVariant& varStroke, bool dpi = false) = 0;
+    virtual void drawStroke(const Stroke& stroke, bool dpi = false) = 0;
     virtual void drawStrokes(const QVariantList& strokes, bool dpi = false) = 0;
+    virtual void drawStrokes(const QList<Stroke>& strokes, bool dpi = false) = 0;
     virtual void copy(HWCanvasBase* canvas) = 0;
+
+    virtual QList<Stroke> strokes(HWCVType::ContentVisible range) = 0;
 
     QRectF range() const;
     void resetRange();

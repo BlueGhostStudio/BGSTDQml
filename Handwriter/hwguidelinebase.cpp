@@ -12,7 +12,7 @@ HWGuideLineBase::HWGuideLineBase(QQuickItem* parent) {
 }
 
 void
-HWGuideLineBase::setGuideLine(const QVariantMap& define) {
+HWGuideLineBase::setLayout(const QJSValue& define) {
     bool hasChanged = false;
 
     /*hasChanged = define.contains("preset");
@@ -20,7 +20,7 @@ HWGuideLineBase::setGuideLine(const QVariantMap& define) {
     m_guideLineStyle =
         m_guidelinePresets[hasChanged ? define["preset"].toInt() : 0];*/
     bool ok;
-    int presetIndex = define["preset"].toInt(&ok);
+    int presetIndex = define.property("preset").toVariant().toInt(&ok);
 
     if (ok && m_preset != presetIndex) {
         m_guideLineStyle = m_guideLinePresets[presetIndex];
@@ -28,43 +28,46 @@ HWGuideLineBase::setGuideLine(const QVariantMap& define) {
         hasChanged = true;
     }
 
-    int type = define["type"].toInt(&ok);
+    int type = define.property("type").toVariant().toInt(&ok);
     if (ok && m_guideLineStyle.type != type) {
         m_guideLineStyle.type = type;
         hasChanged = true;
     }
 
-    qreal spacingMM = define["spacingMm"].toReal(&ok);
+    qreal spacingMM = define.property("spacingMm").toVariant().toReal(&ok);
     if (ok && m_guideLineStyle.spacingMm != spacingMM) {
         m_guideLineStyle.spacingMm = spacingMM;
         hasChanged = true;
     }
 
-    qreal horizontalPadding = define["horizontalPadding"].toReal(&ok);
+    qreal horizontalPadding =
+        define.property("horizontalPadding").toVariant().toReal(&ok);
     if (ok && m_guideLineStyle.horizontalPadding != horizontalPadding) {
         m_guideLineStyle.horizontalPadding = horizontalPadding;
         hasChanged = true;
     }
 
-    qreal topPadding = define["topPadding"].toReal(&ok);
+    qreal topPadding = define.property("topPadding").toVariant().toReal(&ok);
     if (ok && m_guideLineStyle.topPadding != topPadding) {
         m_guideLineStyle.topPadding = topPadding;
         hasChanged = true;
     }
 
-    qreal bottomPadding = define["bottomPadding"].toReal(&ok);
+    qreal bottomPadding =
+        define.property("bottomPadding").toVariant().toReal(&ok);
     if (ok && m_guideLineStyle.bottomPadding != bottomPadding) {
         m_guideLineStyle.bottomPadding = bottomPadding;
         hasChanged = true;
     }
 
-    qreal lineHeightMm = define["lineHeightMm"].toReal(&ok);
+    qreal lineHeightMm =
+        define.property("lineHeightMm").toVariant().toReal(&ok);
     if (ok && m_guideLineStyle.lineHeightMm != lineHeightMm) {
         m_guideLineStyle.lineHeightMm = lineHeightMm;
         hasChanged = true;
     }
 
-    QColor color(define["color"].toString());
+    QColor color(define.property("color").toString());
     if (color.isValid() && m_guideLineStyle.color != color) {
         m_guideLineStyle.color = color;
         hasChanged = true;
@@ -73,25 +76,36 @@ HWGuideLineBase::setGuideLine(const QVariantMap& define) {
     if (hasChanged) {
         m_preset = -1;
         updateGuideLine();
-        QMetaObject::invokeMethod(toQObject(), "guideLineChanged");
+        QMetaObject::invokeMethod(toQObject(), "layoutChanged");
         QMetaObject::invokeMethod(toQObject(), "typeChanged");
         QMetaObject::invokeMethod(toQObject(), "colorChanged");
     }
 }
 
-QVariantMap
-HWGuideLineBase::guideLine() const {
-    return QVariantMap(
+QJSValue HWGuideLineBase::layout() const {
+    QJSValue theLayout = qmlEngine(toQObject()->parent())->newObject();
+    theLayout.setProperty("type", m_guideLineStyle.type);
+    theLayout.setProperty("spacingMm", m_guideLineStyle.spacingMm);
+    theLayout.setProperty("horizontalPadding",
+                          m_guideLineStyle.horizontalPadding);
+    theLayout.setProperty("topPadding", m_guideLineStyle.topPadding);
+    theLayout.setProperty("bottomPadding", m_guideLineStyle.bottomPadding);
+    theLayout.setProperty("lineHeightMm", m_guideLineStyle.lineHeightMm);
+    theLayout.setProperty("color", m_guideLineStyle.color.name());
+
+    return theLayout;
+    /*return QVariantMap(
         { { "type", m_guideLineStyle.type },
           { "spacingMm", m_guideLineStyle.spacingMm },
           { "horizontalPadding", m_guideLineStyle.horizontalPadding },
           { "topPadding", m_guideLineStyle.topPadding },
           { "bottomPadding", m_guideLineStyle.bottomPadding },
           { "lineHeightMm", m_guideLineStyle.lineHeightMm },
-          { "color", m_guideLineStyle.color } });
+          { "color", m_guideLineStyle.color } });*/
 }
 
-HWGLType::Type HWGuideLineBase::type() const {
+HWGLType::Type
+HWGuideLineBase::type() const {
     return (HWGLType::Type)m_guideLineStyle.type;
 }
 

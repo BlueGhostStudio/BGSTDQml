@@ -67,7 +67,7 @@ class HWSettings : public QSettings {
     Q_PROPERTY(qreal autoScrollTriggerPos READ autoScrollTriggerPos WRITE
                    setAutoScrollTriggerPos NOTIFY autoScrollTriggerPosChanged)
 
-    Q_PROPERTY(QVariant penPresets READ penPresets WRITE setPenPresets NOTIFY
+    Q_PROPERTY(QVariantList penPresets READ penPresets WRITE setPenPresets NOTIFY
                    penPresetsChanged)
 
     Q_PROPERTY(int inkConsumption READ inkConsumption WRITE setInkConsumption
@@ -78,6 +78,9 @@ class HWSettings : public QSettings {
 
     Q_PROPERTY(QVariantList userSavedStrokes READ userSavedStrokes WRITE
                    setUserSavedStrokes NOTIFY userSavedStrokesChanged)
+
+    Q_PROPERTY(QVariantList strokeSample READ strokeSample WRITE setStrokeSample
+                   NOTIFY strokeSampleChanged)
 
 public:
     explicit HWSettings(QObject* parent = nullptr);
@@ -155,8 +158,8 @@ public:
     qreal autoScrollTriggerPos() const;
     Q_INVOKABLE void restore2DefaultZoomAutoScroll();
 
-    QVariant penPresets() const;
-    void setPenPresets(const QVariant& cp);
+    QVariantList penPresets() const;
+    void setPenPresets(const QVariantList& cp);
     Q_INVOKABLE void restore2DefaultPenPresets();
 
     int inkConsumption() const;
@@ -172,9 +175,12 @@ public:
 
     QVariantList userSavedStrokes() const;
     void setUserSavedStrokes(const QVariantList& userSavedStrokes);
-    Q_INVOKABLE void saveUserStroke(const QJSValue& options);
+    Q_INVOKABLE int saveUserStroke(const QJSValue& options);
     Q_INVOKABLE void updateUserStroke(int index, const QJSValue& options);
     Q_INVOKABLE void removeUserStroke(int index);
+
+    QVariantList strokeSample();
+    void setStrokeSample(const QVariantList& strokeSample);
 
 signals:
     void dpiChanged();
@@ -219,6 +225,8 @@ signals:
 
     void userSavedStrokesChanged();
 
+    void strokeSampleChanged();
+
 private:
     bool m_isTouchScreen = false;
     qreal m_dpi = -1;
@@ -262,8 +270,8 @@ private:
                                    /*{ "minPressure", 0.23 },
                                    { "maxPressure", 0.32 },*/
                                    { "minPenSize", 1 /*0.01*/ },
-                                   { "fadeoutLimit", 0.8 },
-                                   { "fadeinLimit", 1.2 },
+                                   { "fadeoutLimit", 0.6 },
+                                   { "fadeinLimit", 1.4 },
                                    { "velocityThreshold", 800 } } };
     const QVariant m_defaultPalette = QVariantList{
         QColor::fromString("#000000"), QColor::fromString("#064980"),
@@ -274,6 +282,8 @@ private:
     int m_inkConsumption = 0;
 
     int m_maxInkAmount = 64;
+
+    QVariantList m_strokeSample;
 };
 
 #endif  // HWSETTINGS_H

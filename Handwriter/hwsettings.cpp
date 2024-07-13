@@ -29,6 +29,7 @@
 
 #define HW_FADEOUTLIMIT HW_PEN "/fadeoutLimit"
 #define HW_FADEINLIMIT HW_PEN "/fadeinLimit"
+#define HW_STROKESAMPLE HW_PEN "/strokeSample"
 
 #define HW_PENPRESETS "handwriter/penPresets"
 
@@ -367,14 +368,13 @@ HWSettings::restore2DefaultZoomAutoScroll() {
     emit autoScrollToRightChanged();
 }
 
-QVariant
-HWSettings::penPresets() const {
-    return value(HW_PENPRESETS, m_defaultPenPresets);
+QVariantList HWSettings::penPresets() const {
+    return value(HW_PENPRESETS, m_defaultPenPresets).toList();
 }
 
 void
-HWSettings::setPenPresets(const QVariant& cp) {
-    setValue(HW_PENPRESETS, cp.toList());
+HWSettings::setPenPresets(const QVariantList& cp) {
+    setValue(HW_PENPRESETS, cp);
     emit penPresetsChanged();
 }
 
@@ -455,11 +455,15 @@ HWSettings::setUserSavedStrokes(const QVariantList& userSavedStrokes) {
     emit userSavedStrokesChanged();
 }
 
-void
+int
 HWSettings::saveUserStroke(const QJSValue& options) {
     QVariantList userSavedStrokes = this->userSavedStrokes();
+    int count = userSavedStrokes.count();
+
     userSavedStrokes.append(options.toVariant());
     setUserSavedStrokes(userSavedStrokes);
+
+    return count;
 }
 
 void
@@ -474,4 +478,26 @@ HWSettings::removeUserStroke(int index) {
     QVariantList userSavedStrokes = this->userSavedStrokes();
     userSavedStrokes.remove(index);
     setUserSavedStrokes(userSavedStrokes);
+}
+
+QVariantList
+HWSettings::strokeSample()  {
+    if (m_strokeSample.isEmpty()) {
+        m_strokeSample = value(HW_STROKESAMPLE).toList();
+        if (m_strokeSample.isEmpty()) {
+            QFile sampleFile(":/qt/qml/BGStudio/Handwriter/strokeSample.json");
+            if (sampleFile.open(QIODevice::ReadOnly)) {
+                QJsonDocument sampleJson = QJsonDocument::fromJson(sampleFile.readAll());
+                m_strokeSample = sampleJson.toVariant().toList();
+            }
+        }
+    }
+    return m_strokeSample;
+}
+
+void
+HWSettings::setStrokeSample(const QVariantList& strokeSample) {
+    m_strokeSample = strokeSample;
+    setValue(HW_STROKESAMPLE, strokeSample);
+    emit strokeSampleChanged();
 }

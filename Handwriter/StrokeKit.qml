@@ -11,7 +11,7 @@ ColumnLayout {
     property alias strokePresets: strokePresets
     property alias userSavedStrokes: userSavedStrokes
     property alias strokeColorSelector: strokeColorSelector
-    property alias strokeSettings: strokeSettings
+    property alias strokeAdjustment: strokeAdjustment
     property alias strokePreview: strokePreview
 
     spacing: 0
@@ -57,10 +57,7 @@ ColumnLayout {
                         orientation: Qt.Vertical
                         StrokePresets {
                             id: strokePresets
-                            onClicked: {
-                                strokeSettings.loadSettings(options)
-                                userSavedStrokes.buttonGroup.checkState = Qt.Unchecked
-                            }
+                            writer: strokeKit.writer
                         }
                     }
 
@@ -70,40 +67,11 @@ ColumnLayout {
                         UserSavedStrokes {
                             id: userSavedStrokes
 
-                            Menu {
-                                id: userSavedStrokesMenu
-                                property int index
+                            writer: strokeKit.writer
 
-                                MenuItem {
-                                    text: "Update"
-
-                                    onTriggered: {
-                                        userSavedStrokes.updateStroke(userSavedStrokesMenu.index,
-                                                               strokeSettings.options)
-                                    }
-                                }
-
-                                MenuItem {
-                                    text: "Remove"
-
-                                    onTriggered: {
-                                        userSavedStrokes.removeStroke(userSavedStrokesMenu.index)
-                                    }
-                                }
-                            }
-
-                            onClicked: {
-                                strokeSettings.loadSettings(options)
-                                strokePresets.buttonGroup.checkState = Qt.Unchecked
-                            }
-                            onPressAndHold: (index) => {
-                                                userSavedStrokesMenu.index = index
-                                                userSavedStrokesMenu.open()
-                                            }
-
-                            onRequesSave: {
-                                saveStroke(strokeSettings.options)
-                            }
+                            /*onRequesSave: {
+                                saveStroke(strokeAdjustment.options)
+                            }*/
                         }
                     }
                 }
@@ -117,17 +85,7 @@ ColumnLayout {
                     FieldItem {
                         StrokeColorSelector {
                             id: strokeColorSelector
-                            onClicked: function(index) {
-                                if (index !== strokeColor)
-                                    userSavedStrokes.buttonGroup.checkState = Qt.Unchecked
-                            }
-
-                            onStrokeColorChanged: {
-                                if (strokeSettings.strokeColor !== strokeColor)
-                                    strokeSettings.strokeColor = strokeColor
-                            }
-
-                            // writer: strokeKit.writer
+                            writer: strokeKit.writer
                         }
                     }
                 }
@@ -145,12 +103,26 @@ ColumnLayout {
                 Layout.fillWidth: true
                 implicitHeight: width
 
-                writer.strokeType: strokeSettings.options.strokeType
-                writer.minPenSize: strokeSettings.options.minPenSize
-                writer.strokeSize: strokeSettings.options.strokeSize
-                writer.fadeoutLimit: strokeSettings.options.fadeoutLimit
-                writer.fadeinLimit: strokeSettings.options.fadeinLimit
-                writer.velocityThreshold: strokeSettings.options.velocityThreshold
+                /*writer.strokeType: strokeKit.writer.strokeType
+                writer.minPenSize: strokeKit.writer.minPenSize
+                writer.strokeSize: strokeKit.writer.strokeSize
+                writer.fadeoutLimit: strokeKit.writer.fadeoutLimit
+                writer.fadeinLimit: strokeKit.writer.fadeinLimit
+                writer.velocityThreshold: strokeKit.writer.velocityThreshold*/
+
+                Connections {
+                    target: strokeKit
+                    function onWriterChanged() {
+                        if (strokeKit.writer) {
+                            strokeKit.writer.strokeType = strokeKit.writer.strokeType
+                            strokeKit.writer.minPenSize = strokeKit.writer.minPenSize
+                            strokeKit.writer.strokeSize = strokeKit.writer.strokeSize
+                            strokeKit.writer.fadeoutLimit = strokeKit.writer.fadeoutLimit
+                            strokeKit.writer.fadeinLimit = strokeKit.writer.fadeinLimit
+                            strokeKit.writer.velocityThreshold = strokeKit.writer.velocityThreshold
+                        }
+                    }
+                }
             }
 
             FieldsPane {
@@ -160,21 +132,15 @@ ColumnLayout {
                 Layout.fillHeight: true
 
                 flickable.interactive: !strokePreview.writer.writing
-                                       && !strokePreview.gestureArea.isGestureInProgress
+                                       && !strokePreview.isGestureInProgress
 
                 FieldItem {
-                    StrokeSettings {
-                        id: strokeSettings
+                    StrokeAdjustment {
+                        id: strokeAdjustment
 
                         writer: strokeKit.writer
 
                         BGControls.options: globalGroupBoxOptions
-
-                        onStrokeColorChanged: strokeColorSelector.strokeColor = strokeColor
-                        onActivated: {
-                            strokePresets.buttonGroup.checkState = Qt.Unchecked
-                            userSavedStrokes.buttonGroup.checkState = Qt.Unchecked
-                        }
                     }
                 }
             }

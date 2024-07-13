@@ -10,7 +10,7 @@ class HWViewportAttachedType : public QObject {
     Q_OBJECT
     QML_ANONYMOUS
 
-    Q_PROPERTY(HWViewport* viewport READ viewport CONSTANT)
+    Q_PROPERTY(HWViewport* viewport READ viewport NOTIFY viewportChanged)
 
 public:
     explicit HWViewportAttachedType(QObject* parent = nullptr);
@@ -18,6 +18,7 @@ public:
     HWViewport* viewport() const;
 
 signals:
+    void viewportChanged();
 };
 
 #endif  // HWVIEWPORTATTACHEDTYPE_H

@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QQuickItem>
 #include <QVariant>
+#include <QJSValue>
 
 struct t_guideLine {
     int type = 0;
@@ -28,8 +29,8 @@ class HWGuideLineBase {
 public:
     HWGuideLineBase(QQuickItem* parent);
 
-    void setGuideLine(const QVariantMap& define);
-    QVariantMap guideLine() const;
+    void setLayout(const QJSValue& define);
+    QJSValue layout() const;
 
     HWGLType::Type type() const;
 

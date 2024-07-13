@@ -48,33 +48,30 @@ import BGStudio.Controls
 }*/
 
 HWViewport {
-    paper.paperSizeMm: "17x17"
-    paper.background: Rectangle {
-        color: "white"
-    }
-
     property alias writer: strokeSample
 
-    canvas: HWStrokeSample {
-        id: strokeSample
-        //guideLine.preset: HWGuideLine.Grid
+    paper: HWPaper {
+        canvas: HWStrokeSample {
+            id: strokeSample
+            onStrokeTypeChanged: replayRecord()
+            onMinPenSizeChanged: replayRecord()
+            onStrokeSizeChanged: replayRecord()
+            onFadeoutLimitChanged: replayRecord()
+            onFadeinLimitChanged: replayRecord()
+            onVelocityThresholdChanged: replayRecord()
+
+            Component.onCompleted: record()
+        }
+        paperSizeMm: "17x17"
+        color: "#ccc"
         guideLine.visible: true
-        guideLine.guideLine: {
+        guideLine.layout: {
             "type": 0,
             "spacingMm": 4,
             "horizontalPadding": 0.5,
             "topPadding": 0.5,
             "bottomPadding": 0.5
         }
-
-        onStrokeTypeChanged: replayRecord()
-        onMinPenSizeChanged: replayRecord()
-        onStrokeSizeChanged: replayRecord()
-        onFadeoutLimitChanged: replayRecord()
-        onFadeinLimitChanged: replayRecord()
-        onVelocityThresholdChanged: replayRecord()
-
-        Component.onCompleted: record()
     }
 
     ToolButton {
@@ -85,6 +82,14 @@ HWViewport {
 
         onClicked: strokeSample.resetRecord()
     }
+    ToolButton {
+        anchors.right: tbReset.left
+        anchors.bottom: parent.bottom
+        text: "export"
+
+        onClicked: HWSettings.strokeSample = strokeSample.exportRecord()
+    }
+
     Text {
         anchors.right: tbReset.left
         anchors.bottom: tbReset.bottom
@@ -103,7 +108,7 @@ HWViewport {
         height: paper.height
     }
 
-    gestureArea.enabled: false
+    // gestureArea.enabled: false
 
     // Component.onCompleted: console.log(gestureArea.isG
 

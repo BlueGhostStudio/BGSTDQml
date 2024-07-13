@@ -23,7 +23,9 @@ ApplicationWindow {
             Action { text: qsTr("&Open...") }
             Action { text: qsTr("&Save") }
             Action { text: qsTr("Save &As...") }
+
             MenuSeparator { }
+
             Action { text: qsTr("&Quit") }
         }
         Menu {

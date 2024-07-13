@@ -1,9 +1,13 @@
 #include "hwstrokesample.h"
 
 #include <QRandomGenerator>
+#include <hwsettings.h>
 
 HWStrokeSample::HWStrokeSample() {
     setClip(true);
+    setFlag(QQuickItem::ItemObservesViewport, false);
+
+    // setContentVisible(VisibleFullContent);
 
     QObject::connect(this, &HWStrokeSample::writeStart, this,
                      [=](const QPointF&, const StrokePoint& point) {
@@ -20,7 +24,14 @@ HWStrokeSample::HWStrokeSample() {
 }
 
 void
+HWStrokeSample::componentComplete() {
+    HWWriter::componentComplete();
+    m_strokeSampleFromSetting = m_settings->strokeSample();
+}
+
+void
 HWStrokeSample::updateCircularPreview(qreal radius) {
+    clear();
     qreal angle = 0;
     const QPointF center(width() / 2, height() / 2);
     float velocity = -1;
@@ -38,7 +49,9 @@ HWStrokeSample::updateCircularPreview(qreal radius) {
         angle += qAsin(halfLen / radius);
 
         if (QRandomGenerator::global()->generateDouble() > 0.5)
-            velocity = QRandomGenerator::global()->generateDouble() * 750 + 50;
+            velocity = QRandomGenerator::global()->generateDouble() *
+                           m_velocityThreshold +
+                       50;
 
         point = { 1,
                   QPointF(qCos(angle) * radius + center.x(),
@@ -50,6 +63,7 @@ HWStrokeSample::updateCircularPreview(qreal radius) {
 
 void
 HWStrokeSample::updateSineWavePreview(qreal width, qreal height) {
+    clear();
     float velocity = -1;
     const qreal verticalCenter = this->height() / 2;
     qreal accumLen = 0;
@@ -66,7 +80,8 @@ HWStrokeSample::updateSineWavePreview(qreal width, qreal height) {
     // emit writeStart(startPos, point);
 
     while (accumLen < width) {
-        velocity = (qSin(accumLen * r_p + M_PI / 2) * 0.5 + 0.5) * 400;
+        velocity =
+            (qSin(accumLen * r_p + M_PI / 2) * 0.5 + 0.5) * m_velocityThreshold;
         accumLen += 5;
 
         StrokePoint point{ 1,
@@ -75,37 +90,32 @@ HWStrokeSample::updateSineWavePreview(qreal width, qreal height) {
                                  verticalCenter },
                            velocity };
 
-        Stroke stroke = penSegment(point);
+        penSegment(point);
         // emit writeUpdated(stroke, point);
     }
-    /*auto createPolygon = [&](qreal len,
-                             QList<QPair<int, StrokePoint>>& strokePoints) {
-        velocity = (qSin(accumLen * r_p + M_PI / 2) * 0.5 + 0.5) * 400;
-        accumLen += len;
 
-        strokePoints.append(
-            { 1,
-              { QPointF(startX + accumLen,
-                        qSin(accumLen * hScale) * vScale + verticalCenter),
-                velocity } });
-    };
+    setImplicitSize(width, height);
+}
 
-    auto f = [&](QList<QPair<int, StrokePoint>>& strokePoints) {
-        strokePoints.append({ 0, { QPointF(startX, verticalCenter), -1 } });
+void
+HWStrokeSample::loadFromSetting() {
+    QObject::connect(m_settings, &HWSettings::strokeSampleChanged, this, [=]() {
+        m_strokeSampleFromSetting = m_settings->strokeSample();
+        updateFromSetting();
+    });
 
-        while (accumLen < width) {
-            createPolygon(5, strokePoints);
-        }
-    };
+    updateFromSetting();
+}
 
-    if (m_record) {
-        f(m_recordedStrokes);
-        replayRecord();
+void
+HWStrokeSample::updateFromSetting() {
+    if (m_strokeSampleFromSetting.isEmpty()) {
+        updateCircularPreview((width() - 6) / 2);
     } else {
-        QList<QPair<int, StrokePoint>> strokePoints;
-        f(strokePoints);
-        replayStrokesWrite(strokePoints);
-    }*/
+        clear();
+        replayStrokesWrite(m_strokeSampleFromSetting);
+        setImplicitSize(m_range.width(), m_range.height());
+    }
 }
 
 /*bool

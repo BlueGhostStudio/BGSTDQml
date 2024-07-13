@@ -11,45 +11,23 @@ void
 HWWriter::classBegin() {
     HWCanvas::classBegin();
 
-    m_guideLine = new HWGuideLine(this);
+    /*m_guideLine = new HWGuideLine(this);
     m_guideLine->setZ(-1);
     m_guideLine->setVisible(false);
 
     QObject* anchors = qobject_cast<QObject*>(
         m_guideLine->property("anchors").value<QObject*>());
-    if (anchors) anchors->setProperty("fill", QVariant::fromValue(this));
+    if (anchors) anchors->setProperty("fill", QVariant::fromValue(this));*/
 
-    /*bool isTouchScreen = false;
-    foreach (const QInputDevice* device, QInputDevice::devices()) {
-        if (device->type() == QInputDevice::DeviceType::TouchScreen) {
-            isTouchScreen = true;
-            break;
-        }
-    }*/
-
-    if (m_settings->isTouchScreen())
-        setAcceptTouchEvents(true);
-    else
-        setAcceptedMouseButtons(Qt::AllButtons);
-
-    // m_pressureSupport = (PressureSupport)m_settings->pressureSupport();
-
-    loadSettings();
+    loadPresetWriteParameter(0);
 }
 
 void
 HWWriter::componentComplete() {
     HWCanvas::componentComplete();
 
-    QObject::connect(this, &HWWriter::scaleChanged, this,
-                     &HWWriter::cumulativeScale);
-
-    QQuickItem* theParentItem = parentItem();
-    while (theParentItem) {
-        QObject::connect(theParentItem, &QQuickItem::scaleChanged, this,
-                         &HWWriter::cumulativeScale);
-        theParentItem = theParentItem->parentItem();
-    }
+    QObject::connect(this, &HWCanvas::combinedScaleChanged, this,
+                     &HWWriter::scaledVelocityThresholdChanged);
 
     QObject::connect(this, &HWCanvas::cleared, this, [=]() {
         m_maxVelocity = 0;
@@ -58,18 +36,10 @@ HWWriter::componentComplete() {
 }
 
 void
-HWWriter::loadSettings() {
+HWWriter::loadDefaultWriteParameter() {
     setStrokeType(Ballpoint);
     setStrokeColor(Black);
     setStrokeSize(m_settings->strokeSize());
-
-    /*setPressureSupport((PressureSupport)m_settings->pressureSupport());
-
-    setMinPressure(m_settings->minPressure());
-    setMaxPressure(m_settings->maxPressure());
-
-    setMinEllipseDiameters(m_settings->minEllipseDiameters());
-    setMaxEllipseDiameters(m_settings->maxEllipseDiameters());*/
 
     setVelocityThreshold(m_settings->velocityThreshold());
 
@@ -80,33 +50,30 @@ HWWriter::loadSettings() {
 }
 
 bool
-HWWriter::loadSettings(int preset) {
-    QVariantList penPresets = m_settings->penPresets().toList();
-    if (preset < penPresets.length()) {
-        loadSettings(qmlEngine(this)->toScriptValue(penPresets[preset]));
-        /*qDebug() <<
-        qmlEngine(this)->toScriptValue(penPresets[preset]).property("size").toNumber();
-        QVariantMap mPen = penPresets[preset].toMap();
-        qDebug() << qjsEngine(this);
+HWWriter::loadPresetWriteParameter(int presetIndex) {
+    QVariantList penPresets = m_settings->penPresets();
+    if (presetIndex < penPresets.length()) {
+        // loadWriteParameter(qmlEngine(this)->toScriptValue(penPresets[preset]));
+        QJSValue presetParam =
+            qmlEngine(this)->toScriptValue(penPresets[presetIndex]);
+        presetParam.setProperty("method", Preset);
+        presetParam.setProperty("index", presetIndex);
+        loadWriteParameter(presetParam);
 
-        setStrokeType(mPen.contains("type") ? (StrokeType)mPen["type"].toInt()
-                                            : Ballpoint);
-        setStrokeSize(mPen.contains("size") ? mPen["size"].toReal()
-                                            : m_settings->strokeSize());
+        return true;
+    } else
+        return false;
+}
 
-        setVelocityThreshold(mPen.contains("velocityThreshold")
-                                 ? mPen["velocityThreshold"].toReal()
-                                 : m_settings->velocityThreshold());
-
-        setMinPenSize(mPen.contains("minSize") ? mPen["minSize"].toReal()
-                                               : m_settings->minPenSize());
-
-        setFadeinLimit(mPen.contains("fadeinLimit")
-                           ? mPen["fadeinLimit"].toReal()
-                           : m_settings->fadeinLimit());
-        setFadeoutLimit(mPen.contains("fadeoutLimit")
-                            ? mPen["fadeoutLimit"].toReal()
-                            : m_settings->fadeoutLimit());*/
+bool
+HWWriter::loadUserSavedWriteParameter(int userSavedIndex) {
+    QVariantList penUserSaved = m_settings->userSavedStrokes();
+    if (userSavedIndex < penUserSaved.length()) {
+        QJSValue presetParam =
+            qmlEngine(this)->toScriptValue(penUserSaved[userSavedIndex]);
+        presetParam.setProperty("method", UseSaved);
+        presetParam.setProperty("index", userSavedIndex);
+        loadWriteParameter(presetParam);
 
         return true;
     } else
@@ -114,53 +81,108 @@ HWWriter::loadSettings(int preset) {
 }
 
 void
-HWWriter::loadSettings(const QJSValue& strokeOptions) {
-    if (strokeOptions.isObject()) {
-        QJSValue jsvStrokeProp;
+HWWriter::loadWriteParameter(const QJSValue& writeParameter) {
+    if (writeParameter.isObject()) {
+        QJSValue jsvProp;
 
-        jsvStrokeProp = strokeOptions.property("strokeType");
-        setStrokeType(jsvStrokeProp.isUndefined()
-                          ? Ballpoint
-                          : (StrokeType)jsvStrokeProp.toInt());
+        jsvProp = writeParameter.property("strokeType");
+        setStrokeType(
+            jsvProp.isUndefined() ? Ballpoint : (StrokeType)jsvProp.toInt(),
+            false);
 
-        jsvStrokeProp = strokeOptions.property("strokeColor");
-        setStrokeColor(jsvStrokeProp.isUndefined()
-                           ? Black
-                           : (StrokeColor)qMin(jsvStrokeProp.toInt(), 6));
+        jsvProp = writeParameter.property("strokeColor");
+        if (!jsvProp.isUndefined())
+            setStrokeColor((StrokeColor)qMin(jsvProp.toInt(), 6));
 
-        jsvStrokeProp = strokeOptions.property("strokeSize");
-        setStrokeSize(jsvStrokeProp.isUndefined() ? m_settings->strokeSize()
-                                                  : jsvStrokeProp.toNumber());
+        jsvProp = writeParameter.property("strokeSize");
+        setStrokeSize(jsvProp.isUndefined() ? m_settings->strokeSize()
+                                            : jsvProp.toNumber(),
+                      false);
 
-        jsvStrokeProp = strokeOptions.property("minPenSize");
-        setMinPenSize(jsvStrokeProp.isUndefined() ? m_settings->minPenSize()
-                                                  : jsvStrokeProp.toNumber());
+        jsvProp = writeParameter.property("minPenSize");
+        setMinPenSize(jsvProp.isUndefined() ? m_settings->minPenSize()
+                                            : jsvProp.toNumber(),
+                      false);
 
-        jsvStrokeProp = strokeOptions.property("fadeoutLimit");
-        setFadeoutLimit(jsvStrokeProp.isUndefined() ? m_settings->fadeoutLimit()
-                                                    : jsvStrokeProp.toNumber());
+        jsvProp = writeParameter.property("fadeoutLimit");
+        setFadeoutLimit(jsvProp.isUndefined() ? m_settings->fadeoutLimit()
+                                              : jsvProp.toNumber(),
+                        false);
 
-        jsvStrokeProp = strokeOptions.property("fadeinLimit");
-        setFadeinLimit(jsvStrokeProp.isUndefined() ? m_settings->fadeinLimit()
-                                                   : jsvStrokeProp.toNumber());
+        jsvProp = writeParameter.property("fadeinLimit");
+        setFadeinLimit(jsvProp.isUndefined() ? m_settings->fadeinLimit()
+                                             : jsvProp.toNumber(),
+                       false);
 
-        jsvStrokeProp = strokeOptions.property("velocityThreshold");
-        setVelocityThreshold(jsvStrokeProp.isUndefined()
+        jsvProp = writeParameter.property("velocityThreshold");
+        setVelocityThreshold(jsvProp.isUndefined()
                                  ? m_settings->velocityThreshold()
-                                 : jsvStrokeProp.toNumber());
+                                 : jsvProp.toNumber(),
+                             false);
 
-        emit strokeOptionsChanged();
+        jsvProp = writeParameter.property("__method__");
+        if (jsvProp.isUndefined()) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit writeParameterChanged(Custom, -1);
+        } else {
+            // WriteParameterMethod method =
+            // (WriteParameterMethod)jsvProp.toInt();
+            m_writeParameterMethod = (WriteParameterMethod)jsvProp.toInt();
+            jsvProp = writeParameter.property("__index__");
+            m_writeParameterIndex =
+                jsvProp.isUndefined() ? -1 : jsvProp.toInt();
+            emit writeParameterChanged(m_writeParameterMethod,
+                                       m_writeParameterIndex);
+        }
     }
 }
 
-HWGuideLine*
-HWWriter::guideLine() const {
-    return m_guideLine;
+QJSValue
+HWWriter::writeParameter() const {
+    QJSValue options = qmlEngine(this)->newObject();
+    options.setProperty("strokeType", m_strokeType);
+    options.setProperty("strokeColor", m_strokeColor);
+    options.setProperty("strokeSize", m_strokeSize);
+    options.setProperty("minPenSize", m_minPenSize);
+    options.setProperty("fadeoutLimit", m_fadeoutLimit);
+    options.setProperty("fadeinLimit", m_fadeinLimit);
+    options.setProperty("velocityThreshold", m_velocityThreshold);
+
+    return options;
 }
 
 void
+HWWriter::saveUserSavedWriteParameter(const QJSValue& writeParameter) {
+    int index = m_settings->saveUserStroke(writeParameter);
+
+    // QJSValue theWriteParameter(std::move(writeParameter));
+    /*theWriteParameter.setProperty("method", HWWriter::UseSaved);
+    theWriteParameter.setProperty("index", index);*/
+    emit userSavedWriteParameterSaved(index, writeParameter);
+}
+
+void
+HWWriter::updateUserSavedWriteParameter(int index,
+                                        const QJSValue& writeParameter) {
+    m_settings->updateUserStroke(index, writeParameter);
+    emit userSavedWriteParameterUpdated(index, writeParameter);
+}
+
+void
+HWWriter::removeUserSavedWriteParameter(int index) {
+    m_settings->removeUserStroke(index);
+    emit userSavedWriteParameterRemoved(index);
+}
+
+/*HWGuideLine*
+HWWriter::guideLine() const {
+    return m_guideLine;
+}*/
+
+/*void
 HWWriter::setStrokeOptions(const QJSValue& options) {
-    loadSettings(options);
+    loadWriteParameter(options);
 }
 
 QJSValue
@@ -175,12 +197,20 @@ HWWriter::strokeOptions() const {
     options.setProperty("velocityThreshold", m_velocityThreshold);
 
     return options;
-}
+}*/
 
 void
-HWWriter::setStrokeType(HWWriter::StrokeType type) {
-    m_strokeType = type;
-    emit strokeTypeChanged();
+HWWriter::setStrokeType(HWWriter::StrokeType type, bool adjusted) {
+    if (m_strokeType != type) {
+        m_strokeType = type;
+        emit strokeTypeChanged();
+
+        if (adjusted) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit strokeAdjusted();
+        }
+    }
 }
 
 HWWriter::StrokeType
@@ -189,9 +219,16 @@ HWWriter::strokeType() const {
 }
 
 void
-HWWriter::setStrokeColor(HWWriter::StrokeColor color) {
-    m_strokeColor = color;
-    emit strokeColorChanged();
+HWWriter::setStrokeColor(HWWriter::StrokeColor color /*, bool adjusted*/) {
+    if (m_strokeColor != color) {
+        m_strokeColor = color;
+        if (m_writeParameterMethod == UseSaved) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+        }
+
+        emit strokeColorChanged();
+    }
 }
 
 HWWriter::StrokeColor
@@ -200,9 +237,17 @@ HWWriter::strokeColor() const {
 }
 
 void
-HWWriter::setStrokeSize(qreal size) {
-    m_strokeSize = size;
-    emit strokeSizeChanged();
+HWWriter::setStrokeSize(qreal size, bool adjusted) {
+    if (!qFuzzyCompare(m_strokeSize, size)) {
+        m_strokeSize = size;
+        emit strokeSizeChanged();
+
+        if (adjusted) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit strokeAdjusted();
+        }
+    }
 }
 
 qreal
@@ -210,95 +255,77 @@ HWWriter::strokeSize() const {
     return m_strokeSize;
 }
 
-/*void
-HWWriter::setPressureSupport(PressureSupport type) {
-    m_pressureSupport = type;
-    emit pressureSupportChanged();
-}
-
-HWWriter::PressureSupport
-HWWriter::pressureSupport() const {
-    return m_pressureSupport;
-}
-
 void
-HWWriter::setMinPressure(qreal pressure) {
-    m_minPressure = pressure;
-    emit minPressureChanged();
-}
+HWWriter::setMinPenSize(qreal size, bool adjusted) {
+    if (!qFuzzyCompare(m_minPenSize, size)) {
+        m_minPenSize = size;
+        emit minPenSizeChanged();
 
-qreal
-HWWriter::minPressure() const {
-    return m_minPressure;
-}
-
-void
-HWWriter::setMaxPressure(qreal pressure) {
-    m_maxPressure = pressure;
-    emit maxPressureChanged();
-}
-
-qreal
-HWWriter::maxPressure() const {
-    return m_maxPressure;
-}
-
-void
-HWWriter::setMinEllipseDiameters(qreal ELLD) {
-    m_minEllipseDiameters = ELLD;
-
-    emit minEllipseDiametersChanged();
-}
-
-qreal
-HWWriter::minEllipseDiameters() const {
-    return m_minEllipseDiameters;
-}
-
-void
-HWWriter::setMaxEllipseDiameters(qreal ELLD) {
-    m_maxEllipseDiameters = ELLD;
-
-    emit maxEllipseDiametersChanged();
-}
-
-qreal
-HWWriter::maxEllipseDiameters() const {
-    return m_maxEllipseDiameters;
-}*/
-
-/*qreal
-HWWriter::minPE() const {
-    switch (m_pressureSupport) {
-    case PressureSupport::Pressure:
-        return m_minPressure;
-    case PressureSupport::TouchSize:
-        return m_minEllipseDiameters;
-    case PressureSupport::None:
-    default:
-        return -1;
+        if (adjusted) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit strokeAdjusted();
+        }
     }
 }
 
 qreal
-HWWriter::maxPE() const {
-    switch (m_pressureSupport) {
-    case PressureSupport::Pressure:
-        return m_maxPressure;
-    case PressureSupport::TouchSize:
-        return m_maxEllipseDiameters;
-    case PressureSupport::None:
-    default:
-        return -1;
-    }
-}*/
+HWWriter::minPenSize() const {
+    return m_minPenSize;
+}
+
+qreal
+HWWriter::fadeoutLimit() const {
+    return m_fadeoutLimit;
+}
 
 void
-HWWriter::setVelocityThreshold(qreal vel) {
-    m_velocityThreshold = vel;
+HWWriter::setFadeoutLimit(qreal fol, bool adjusted) {
+    if (!qFuzzyCompare(m_fadeoutLimit, fol)) {
+        m_fadeoutLimit = fol;
+        emit fadeoutLimitChanged();
 
-    emit velocityThresholdChanged();
-    emit scaledVelocityThresholdChanged();
+        if (adjusted) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit strokeAdjusted();
+        }
+    }
+}
+
+void
+HWWriter::setFadeinLimit(qreal fil, bool adjusted) {
+    if (!qFuzzyCompare(m_fadeinLimit, fil)) {
+        m_fadeinLimit = fil;
+        emit fadeinLimitChanged();
+
+        if (adjusted) {
+            m_writeParameterMethod = Custom;
+            m_writeParameterIndex = -1;
+            emit strokeAdjusted();
+        }
+    }
+}
+
+qreal
+HWWriter::fadeinLimit() const {
+    return m_fadeinLimit;
+}
+
+void
+HWWriter::setVelocityThreshold(qreal vel, bool adjusted) {
+    if (!qFuzzyCompare(m_velocityThreshold, vel)) {
+        m_velocityThreshold = vel;
+
+        m_writeParameterMethod = Custom;
+        m_writeParameterIndex = -1;
+
+        if (adjusted) {
+            emit velocityThresholdChanged();
+            emit scaledVelocityThresholdChanged();
+            emit strokeAdjusted();
+        }
+    }
 }
 
 qreal
@@ -306,11 +333,24 @@ HWWriter::velocityThreshold() const {
     return m_velocityThreshold;
 }
 
+int
+HWWriter::velocityFactor() const {
+    return m_velocityFactor;
+}
+
+void
+HWWriter::setVelocityFactor(int scaleAdjustsVelocity) {
+    if (m_velocityFactor != scaleAdjustsVelocity) {
+        m_velocityFactor = scaleAdjustsVelocity;
+        emit velocityFactorChanged();
+    }
+}
+
 qreal
 HWWriter::scaledVelocityThreshold() const {
-    // return m_combinedScale > 1 ? m_velocityThreshold *
-    // m_m_scaledVelocityThreshold;
-    return m_velocityThreshold * qMax(m_combinedScale, 1.00);
+    return m_velocityThreshold *
+           qMax(m_velocityFactor != -1 ? m_velocityFactor : m_combinedScale,
+                1.00);
 }
 
 qreal
@@ -318,20 +358,9 @@ HWWriter::maxVelocity() const {
     return m_maxVelocity;
 }
 
-qreal
-HWWriter::combinedScale() const {
-    return m_combinedScale;
-}
-
-void
-HWWriter::setMinPenSize(qreal size) {
-    m_minPenSize = size;
-    emit minPenSizeChanged();
-}
-
-qreal
-HWWriter::minPenSize() const {
-    return m_minPenSize;
+bool
+HWWriter::writing() const {
+    return m_writing;
 }
 
 void
@@ -359,33 +388,6 @@ HWWriter::readOnly() const {
 }
 
 void
-HWWriter::setFadeoutLimit(qreal fol) {
-    m_fadeoutLimit = fol;
-    emit fadeoutLimitChanged();
-}
-
-qreal
-HWWriter::fadeoutLimit() const {
-    return m_fadeoutLimit;
-}
-
-void
-HWWriter::setFadeinLimit(qreal fil) {
-    m_fadeinLimit = fil;
-    emit fadeinLimitChanged();
-}
-
-qreal
-HWWriter::fadeinLimit() const {
-    return m_fadeinLimit;
-}
-
-bool
-HWWriter::writing() const {
-    return m_writing;
-}
-
-void
 HWWriter::setStrokeSizeCalc(const QJSValue& callback) {
     m_strokeSizeCalcFun = callback;
     emit strokeSizeCalcChanged();
@@ -394,6 +396,16 @@ HWWriter::setStrokeSizeCalc(const QJSValue& callback) {
 QJSValue
 HWWriter::strokeSizeCalc() const {
     return m_strokeSizeCalcFun;
+}
+
+HWWriter::WriteParameterMethod
+HWWriter::writeParameterMethod() const {
+    return m_writeParameterMethod;
+}
+
+int
+HWWriter::writeParameterIndex() const {
+    return m_writeParameterIndex;
 }
 
 qreal
@@ -426,10 +438,43 @@ HWWriter::stopRecord() {
 
 void
 HWWriter::replayRecord() {
-    // stopRecord();
     clear();
 
     replayStrokesWrite(m_recordedStrokes);
+}
+
+QVariantList
+HWWriter::exportRecord() {
+    qreal minX = m_range.x();
+    qreal minY = m_range.y();
+
+    QVariantList vlRecords;
+
+    foreach (auto point, m_recordedStrokes) {
+        QVariantMap vmPoint;
+
+        vmPoint["event"] = point.event;
+        /*vmPoint["position"] = QVariantMap(
+            { { "x", qFloor((point.position.x() - minX) * 100) / 100.00 },
+              { "y", qFloor((point.position.y() - minY) * 100) / 100.00 } });*/
+        vmPoint["position"] = QVariantMap{
+            { "x", qFloor((point.position.x() - minX) * 100) / 100.00 },
+            { "y", qFloor((point.position.y() - minY) * 100) / 100.00 }
+        };
+        vmPoint["velocity"] = qFloor(point.velocity * 100) / 100.00;
+
+        vlRecords.append(vmPoint);
+    }
+    QFile strokeSampleFile(
+        QStandardPaths::writableLocation(QStandardPaths::PicturesLocation) +
+        "/strokeSample.json");
+    if (strokeSampleFile.open(QIODevice::WriteOnly)) {
+        strokeSampleFile.write(QJsonDocument::fromVariant(vlRecords).toJson());
+        strokeSampleFile.close();
+    } else
+        qDebug() << "can't write file";
+
+    return vlRecords;
 }
 
 void
@@ -440,6 +485,7 @@ HWWriter::resetRecord() {
 
 void
 HWWriter::penDown(const StrokePoint& point, bool signal) {
+    m_penDownStrokeDrawed = false;
     m_prePos = point.position;
     m_preSize = calcStrokeSize(-1, point);
     if (signal) emit writeStart(point.position, point);
@@ -448,83 +494,67 @@ HWWriter::penDown(const StrokePoint& point, bool signal) {
 Stroke
 HWWriter::penSegment(const StrokePoint& point, bool signal) {
     qreal size = calcStrokeSize(m_preSize, point);
-    if (qMax(m_preSize, size) / 2 > QLineF(m_prePos, point.position).length())
-        return Stroke();
+    /*if (qMax(m_preSize, size) / 2 > QLineF(m_prePos, point.position).length())
+        // size = m_preSize;
+        return Stroke();*/
 
     /*QVariant strokeVariant =
         toStrokeVariant(m_strokeType, m_strokeColor, point.position, m_prePos,
                         m_strokeType == 0 ? m_strokeSize : size,
                         m_strokeType == 0 ? m_strokeSize : m_preSize);*/
+    auto __drawStroke__ = [=]() -> Stroke {
+        Stroke theStroke{ point.position,
+                          m_prePos,
+                          m_strokeType,
+                          m_strokeColor,
+                          m_strokeType == 0 ? m_strokeSize : size,
+                          m_strokeType == 0 ? m_strokeSize : m_preSize };
+
+        drawStroke(theStroke);
+        if (signal && theStroke.type != -1) emit writeUpdated(theStroke, point);
+
+        if (!m_penDownStrokeDrawed) m_penDownStrokeDrawed = true;
+
+        return theStroke;
+    };
     Stroke stroke{ point.position,
                    m_prePos,
                    m_strokeType,
                    m_strokeColor,
                    m_strokeType == 0 ? m_strokeSize : size,
                    m_strokeType == 0 ? m_strokeSize : m_preSize };
-    drawStroke(stroke);
-    // drawStroke(strokeVariant);
 
-    // emit strokeUpdated(strokeVariant);
-    // m_settings->setPressureSupport(0);
-    m_preSize = size;
-    m_prePos = point.position;
+    qreal dist = QLineF(m_prePos, point.position).length();
+    if (qMax(m_preSize, size) / 2 > dist) {
+        /*if (!m_penDownStrokeDrawed) {
+            qreal pre_per = m_preSize / (m_preSize + size);
 
-    if (signal && stroke.type != -1) emit writeUpdated(stroke, point);
+            m_preSize = dist * pre_per;
+            size = dist * (1 - pre_per);
 
-    return stroke;
+            Stroke theStroke = __drawStroke__();
+
+            m_preSize = size;
+            m_prePos = point.position;
+
+            return theStroke;
+        } else {
+            m_penDownStrokeDrawed = true;
+            return Stroke();
+        }*/
+        return Stroke();
+    } else {
+        Stroke theStroke = __drawStroke__();
+        // drawStroke(strokeVariant);
+
+        // emit strokeUpdated(strokeVariant);
+        // m_settings->setPressureSupport(0);
+        m_preSize = size;
+        m_prePos = point.position;
+
+        return theStroke;
+    }
 }
-
-void
-HWWriter::cumulativeScale() {
-    qreal theScale = scale();
-
-    QQuickItem* theParentItem = parentItem();
-    while (theParentItem) {
-        theScale *= theParentItem->scale();
-        theParentItem = theParentItem->parentItem();
-    }
-
-    if (!qFuzzyCompare(theScale, m_combinedScale)) {
-        m_maxVelocity = 0;
-        m_combinedScale = theScale;
-        emit combinedScaleChanged();
-        emit scaledVelocityThreshold();
-    }
-}
-
-/*void
-HWWriter::replayStrokesWrite(const QJSValue& strokes) {
-    if (!strokes.isArray()) return;
-
-    for (int i = 0; i < strokes.property("length").toInt(); ++i) {
-        StrokePoint point;
-        point.position.setX(strokes.property(i).property("x").toNumber());
-        point.position.setY(strokes.property(i).property("y").toNumber());
-        point.velocity = strokes.property(i).property("velocity").toNumber();
-
-        switch (strokes.property(i).property("event").toInt()) {
-        case 0:
-            penDown(point);
-            break;
-        case 1:
-            penSegment(point);
-            break;
-        }
-    }
-}*/
-
-/*qreal
-HWWriter::getPE(const t_strokePoint& point) const {
-    switch (m_pressureSupport) {
-    case PressureSupport::Pressure:
-        return point.pressure;
-    case PressureSupport::TouchSize:
-        return point.ellipseDiameters;
-    case PressureSupport::None:
-    default:
-        return -1;
-    }
-}*/
 
 QVariant
 HWWriter::toStrokeVariant(int type, int color, const QPointF& pos,
@@ -552,16 +582,6 @@ HWWriter::toStrokeVariant(int type, int color, const QPointF& pos,
 
 qreal
 HWWriter::calcStrokeSize(qreal preSize, const StrokePoint& point) {
-    // qreal PE = getPE(point);
-    /*qreal theScale = scale();
-    QQuickItem* item = parentItem();
-    while (item) {
-        theScale *= item->scale();
-        item = item->parentItem();
-    }*/
-
-    // qreal velocity = point.velocity * theScale;
-    // qDebug() << velocity << point.velocity << point.velocity / theScale;
     qreal velocity = point.velocity /* - 70 * theScale*/;
 
     if (velocity > m_maxVelocity) {
@@ -591,31 +611,13 @@ HWWriter::defaultStrokeSizeCalc(qreal preSize,
     } else {
         auto f = [](qreal x, qreal r, qreal o) -> qreal {
             return qCos(qMin(x / r, 1.00) * M_PI + o) / 2 + 0.5;
-            // return qMax(1.00 - x / r, 0.00);
-
-            /*qreal v = qMin(x, r);
-            qreal vth_2 = qPow(r, 2);
-            return (vth_2 - qPow(v, 2)) / vth_2;*/
         };
 
-        // qreal PEScale = 1;
-        /*if (m_pressureSupport != PressureSupport::None) {
-            qreal minPE = HWWriter::minPE();
-            qreal maxPE = HWWriter::maxPE();
-            qreal PER = maxPE - minPE;
-            qreal avPE = qMin(qMax(PE, minPE), maxPE) - minPE;
-
-            PEScale = f(avPE, PER, M_PI);
-        }*/
-
-        // velocity /= 10;
         qreal velocityScale = f(velocity, scaledVelocityThreshold(), 0);
 
-        // qreal maxSize = m_strokeSize * m_maxPenSizeRatio;
         qreal minSize = m_minPenSize;
         qreal sizeR = m_strokeSize - minSize;
 
-        // qreal size = PEScale * velocityScale * sizeR + minSize;
         qreal size = velocityScale * sizeR + minSize;
 
         return fadeLimitCalc(preSize, size);
@@ -637,7 +639,32 @@ HWWriter::replayStrokesWrite(const QList<StrokePoint>& strokePoints) {
 }
 
 void
+HWWriter::replayStrokesWrite(const QVariantList& strokePoints) {
+    foreach (const QVariant& vPoint, strokePoints) {
+        QVariantMap vmPoint = vPoint.toMap();
+
+        QVariantMap vmPosition = vmPoint["position"].toMap();
+
+        StrokePoint point{ vmPoint["event"].toInt(),
+                           QPointF(vmPosition["x"].toReal(),
+                                   vmPosition["y"].toReal()),
+                           vmPoint["velocity"].toFloat() };
+
+        switch (point.event) {
+        case 0:
+            penDown(point, false);
+            break;
+        case 1:
+            penSegment(point, false);
+            break;
+        }
+    }
+}
+
+void
 HWWriter::mousePressEvent(QMouseEvent* event) {
+    HWCanvas::mousePressEvent(event);
+
     if (!m_readOnly && event->button() == Qt::LeftButton &&
         event->modifiers() == Qt::NoModifier) {
         m_writing = true;
@@ -645,61 +672,73 @@ HWWriter::mousePressEvent(QMouseEvent* event) {
 
         StrokePoint point{ 0, event->point(0) };
         penDown(point);
-        // emit writeStart(point.position, point);
-        // if (m_record) m_recordedStrokes.append({ 0, point });
     } else
         event->ignore();
 
-    emit clicked(event->position());
+    emit pointPressed(event->position());
 }
 
 void
 HWWriter::mouseMoveEvent(QMouseEvent* event) {
+    HWCanvas::mouseMoveEvent(event);
+
     if (!m_readOnly) {
         m_writing = true;
         emit writingChanged();
 
         StrokePoint point{ 1, event->point(0) };
-        Stroke theStroke = penSegment(point);
-        /*if (theStroke.type != -1) {
-            emit writeUpdated(theStroke, point);
-        }*/
-
-        // if (m_record) m_recordedStrokes.append({ 1, point });
+        penSegment(point);
     } else
         m_prePos = event->position();
+
+    emit pointMove(event->position());
 }
 
 void
 HWWriter::mouseReleaseEvent(QMouseEvent* event) {
+    HWCanvas::mouseReleaseEvent(event);
+
     m_writing = false;
     emit writingChanged();
 
     if (event->button() == Qt::LeftButton) emit writeEnd();
+
+    emit pointRelease(event->position());
 }
 
 void
 HWWriter::touchEvent(QTouchEvent* event) {
+    HWCanvas::touchEvent(event);
+
+    QEventPoint p0 = event->point(0);
+    QPointF ps0 = p0.position();
     if (event->touchPointStates() == Qt::TouchPointReleased) {
         if (m_pressTimeStamp > 0 &&
             event->timestamp() - m_pressTimeStamp > 500) {
             event->ignore();
             emit writeIgnore();
-        } else if (!m_keepTouchIgnore)
-            emit writeEnd();
+        } else if (!m_keepTouchIgnore) {
+            if (ps0 == p0.pressPosition())
+                emit clicked(ps0);
+            else if (QLineF(ps0, p0.pressPosition()).length() > 0.5)
+                emit writeEnd();
+        }
 
         m_writing = false;
         emit writingChanged();
 
         m_keepTouchIgnore = false;
+        // m_holdState = 0;
         m_preSize = -1;
-    } else if (event->points().count() > 1) {
+
+        emit pointRelease(ps0);
+    } else if (event->pointCount() > 1) {
         m_keepTouchIgnore = true;
         event->ignore();
     } else if (m_keepTouchIgnore)
         event->ignore();
-    else {
-        StrokePoint point{ 0, event->points()[0] };
+    else if (!m_pressAndHold) {
+        StrokePoint point{ 0, p0 };
         QPointF pos = point.position;
 
         m_writing = true;
@@ -707,47 +746,19 @@ HWWriter::touchEvent(QTouchEvent* event) {
 
         switch (event->touchPointStates()) {
         case Qt::TouchPointPressed:
-            /*if (m_readOnly)*/ emit clicked(pos);
-            /*m_prePos = pos;
-            m_preSize = calcStrokeSize(-1, point);*/
-            m_pressTimeStamp = event->timestamp();
+            if (!m_readOnly) {
+                m_pressTimeStamp = event->timestamp();
 
-            point.event = 0;
-            penDown(point);
-            // emit writeStart(pos, point);
+                point.event = 0;
+                penDown(point);
+            }
             break;
         case Qt::TouchPointMoved:
-            /*qreal size = calcStrokeSize(m_preSize, point);
-            QRectF measureDistRect(m_prePos, pos);
-            qreal measureDist =
-                qSqrt(measureDistRect.width() * measureDistRect.width() +
-                      measureDistRect.height() * measureDistRect.height());*/
             qreal dist = QLineF(m_prePos, pos).length();
-            if (dist > 0.5) {
-                if (!m_readOnly) {
-                    m_pressTimeStamp = 0;
-                    /*QVariant strokeVarinat;
-                    strokeVarinat = toStrokeVariant(
-                        m_strokeType, m_strokeColor, pos, m_prePos,
-                        m_strokeType == 0 ? m_strokeSize : size,
-                        m_strokeType == 0 ? m_strokeSize : m_preSize);
-
-                    drawStroke(strokeVarinat);
-                    emit strokeUpdated(strokeVarinat);*/
-                    point.event = 1;
-                    Stroke theStroke = penSegment(point);
-                    /*if (theStroke.type != -1) {
-                        emit writeUpdated(theStroke, point);
-                    }*/
-
-                    /*qreal ELLD = point.ellipseDiameters().width();
-                    qreal pressure = point.pressure();
-                    if (m_record) {
-                        emit recording(m_prePos, pos, ELLD, pressure);
-                    }*/
-                }
-                /*m_prePos = pos;
-                m_preSize = size;*/
+            if (!m_readOnly) {
+                m_pressTimeStamp = 0;
+                point.event = 1;
+                penSegment(point);
             }
             break;
         }

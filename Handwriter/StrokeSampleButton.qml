@@ -6,39 +6,48 @@ import BGStudio.Controls
 
 Button {
     id: control
-    property var options
+    property var writeParameter
     property int strokeColor: 1
+    property alias velocityFactor: strokeSample.velocityFactor
 
     checkable: true
 
     padding: 6
 
-    contentItem: HWStrokeSample {
-        id: strokeSample
+    contentItem: Item {
         implicitWidth: 22
         implicitHeight: 22
 
-        readOnly: true
-        darkPalette: control.BGButton.itemColor.hslLightness >= 0.5
+        HWStrokeSample {
+            id: strokeSample
 
-        onDarkPaletteChanged: refresh()
+            anchors.centerIn: parent
+            implicitWidth: 22
+            implicitHeight: 22
 
-        function refresh() {
-            clear()
-            strokeColor = options.strokeColor
-            strokeType = options.strokeType
-            minPenSize = options.minPenSize
-            strokeSize = options.strokeSize
-            fadeoutLimit = options.fadeoutLimit
-            fadeinLimit = options.fadeinLimit
-            velocityThreshold = options.velocityThreshold
-            updateCircularPreview(8)
+            readOnly: true
+            darkPalette: control.BGButton.itemColor.hslLightness >= 0.5
+            velocityFactor: 10
+
+            onDarkPaletteChanged: refresh()
+
+            function refresh() {
+                if (control.writeParameter) {
+                    writeParameter = control.writeParameter
+                    updateFromSetting()
+                }
+                // updateCircularPreview(8)
+            }
+
+            Component.onCompleted: {
+                loadFromSetting()
+            }
         }
     }
 
-    onCheckedChanged: strokeSample.refresh()
+    // onCheckedChanged: strokeSample.refresh()
 
-    onOptionsChanged: {
+    onWriteParameterChanged: {
         BGControls.forceRefresh()
         strokeSample.refresh()
     }

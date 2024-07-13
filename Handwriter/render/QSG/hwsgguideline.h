@@ -13,8 +13,8 @@ class HWGuideLine : public QQuickItem, public HWGuideLineBase {
 
     QML_EXTENDED_NAMESPACE(HWGLType)
 
-    Q_PROPERTY(QVariantMap guideLine READ guideLine WRITE setGuideLine NOTIFY
-                   guideLineChanged)
+    Q_PROPERTY(QJSValue layout READ layout WRITE setLayout NOTIFY
+                   layoutChanged)
 
     Q_PROPERTY(HWGLType::Type type READ type NOTIFY typeChanged)
     Q_PROPERTY(qreal spacingPx READ spacingPx NOTIFY spacingPxChanged)
@@ -42,7 +42,7 @@ public:
     void updateGuideLine() override;
 
 signals:
-    void guideLineChanged();
+    void layoutChanged();
 
     void typeChanged();
     void spacingPxChanged();

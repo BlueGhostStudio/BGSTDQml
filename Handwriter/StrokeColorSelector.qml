@@ -6,7 +6,7 @@ import BGStudio.Controls
 
 Flow {
     id: strokeColorSelector
-    property int strokeColor: buttonGroup.buttons[0].strokeColor
+
     property HWWriter writer
 
     signal clicked(int index)
@@ -16,8 +16,8 @@ Flow {
         exclusive: true
 
         onClicked: function (button) {
-            if (strokeColorSelector.strokeColor !== button.strokeColor)
-                strokeColorSelector.strokeColor = button.strokeColor
+            if (writer)
+                writer.strokeColor = button.strokeColor
         }
     }
 
@@ -28,29 +28,9 @@ Flow {
             strokeColor: index
             ButtonGroup.group: buttonGroup
 
-            onClicked: strokeColorSelector.clicked(index)
+            checked: writer ? writer.strokeColor === index : false
         }
     }
 
-    Component.onCompleted: {
-        buttonGroup.buttons[0].checked = true
-
-        strokeColorChanged.connect(
-                    function () {
-                        var strokeColorButton = buttonGroup.buttons[strokeColor];
-                        if (!strokeColorButton.checked)
-                            strokeColorButton.checked = true
-                    })
-
-        if (writer) {
-            strokeColorChanged.connect(
-                        function () {
-                            var strokeColorButton = buttonGroup.buttons[strokeColor];
-                            if (!strokeColorButton.checked)
-                                strokeColorButton.checked = true
-
-                            writer.strokeColor = strokeColor
-                        })
-        }
-    }
+    Component.onCompleted: {}
 }

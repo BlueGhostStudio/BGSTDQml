@@ -77,8 +77,10 @@ void
 HWGestureArea::touchEvent(QTouchEvent* event) {
     QEventPoint p0 = event->point(0);
     QPointF ps0 = p0.position();
-    event->addPassiveGrabber(p0, m_viewport->canvas());
-    event->addPassiveGrabber(p0, this);
+    if (!event->passiveGrabbers(p0).contains(m_viewport->canvas()))
+        event->addPassiveGrabber(p0, m_viewport->canvas());
+    if (!event->passiveGrabbers(p0).contains(this))
+        event->addPassiveGrabber(p0, this);
 
     if (event->pointCount() >= 2) {
         QPointF ps1 = event->point(1).position();

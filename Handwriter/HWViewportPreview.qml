@@ -5,21 +5,24 @@ import BGStudio.Handwriter
 
 Frame {
     id: preview
+
+    BGControls.shade: 10
+
     property HWViewport viewport
     readonly property HWPaper paper: viewport.paper
-    readonly property HWCanvas canvas: viewport.canvas
-    property QtObject writeNavigator: null
+    // readonly property HWCanvas canvas: viewport.paper.canvas
+
+    property alias snapshot: canvasSnapshot
 
     property bool syncToViewportEnabled: false
-    property bool scrollEnabled: true
 
     readonly property bool isGestureInProgress: canvasSnapshotTapHandler.active
                                                 || previewPointHandler.active
 
     readonly property real paperX: paper ? -paper.x / viewport.paper.scale : 0
     readonly property real paperY: paper ? -paper.y / viewport.paper.scale : 0
-    readonly property real viewportWidth: viewport ? viewport.width / paper.scale : 0
-    readonly property real viewportHeight: viewport ? viewport.height / paper.scale : 0
+    readonly property real viewportWidth: viewport && paper ? viewport.width / paper.scale : 0
+    readonly property real viewportHeight: viewport && paper ? viewport.height / paper.scale : 0
 
     property Item viewportIndicator: Canvas {
         id: cvsViewportIndicator
@@ -44,7 +47,7 @@ Frame {
 
             ctx.lineWidth = 1
             ctx.setLineDash([2, 2])
-            ctx.strokeStyle = viewport.BGControls.foreground
+            ctx.strokeStyle = Qt.alpha(viewport.BGControls.foreground, 0.5)
             ctx.strokeRect(10, 10, width - 20, height - 20)
         }
 
@@ -57,30 +60,24 @@ Frame {
         }
     }
 
-    x: writeNavigator ? (viewport.width - width) / 2 : 0
-    y: writeNavigator ? -height : 0
-
-    Behavior on y {
-        enabled: writeNavigator
-        NumberAnimation {}
-    }
-
     contentItem: Rectangle {
         clip: true
-        color: viewport.BGControls.background
+        color: preview.BGControls.background
 
-        ShaderEffectSource {
+        HWGrabPreview {
             id: canvasSnapshot
-            // samples: 8
 
-            sourceItem: canvas
+            /*canvas: viewport.canvas
 
             width: paper ? paper.width : 0
             height: paper ? paper.height : 0
 
+            background: paper.background*/
+
+            paper: viewport.paper
+
             TapHandler {
                 id: canvasSnapshotTapHandler
-                enabled: scrollEnabled
 
                 onTapped: {
                     syncToViewport(point.position.x, point.position.y)
@@ -103,7 +100,6 @@ Frame {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
 
-            visible: !preview.writeNavigator
             icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/target.png"
 
             onClicked: syncFromViewport()
@@ -114,8 +110,6 @@ Frame {
         id: previewPointHandler
         property real lastX: 0
         property real lastY: 0
-
-        enabled: scrollEnabled
 
         onActiveChanged:  {
             if (active) {
@@ -148,64 +142,31 @@ Frame {
     }
 
     function syncToViewport (dx, dy) {
-        viewport.panTo(dx - viewportWidth / 2,
-                       dy - viewportHeight / 2)
+        if (viewport) {
+            viewport.panTo(dx - viewportWidth / 2,
+                           dy - viewportHeight / 2)
+        }
     }
 
     function syncFromViewport() {
-        canvasSnapshot.x = Qt.binding(function () {
-            if (viewport) {
-                if (writeNavigator) {
-                    const rightEdge = (viewport.width - paper.x) / paper.scale
-                    if (rightEdge > contentItem.width)
-                        return contentItem.width - rightEdge
-                    else
-                        return 0
-                } else
+        if (paper) {
+            canvasSnapshot.x = Qt.binding(function () {
+                if (viewport) {
                     return paper.x /  paper.scale
                             + (contentItem.width - viewportWidth) / 2
-            } else
-                return 0
-        });
-        canvasSnapshot.y = Qt.binding(function () {
-            if (viewport) {
-                if (writeNavigator) {
-                    if (writeNavigator.writingRect.length > 0
-                            && writeNavigator.writingGridRect.length > 0)
-                        return -writeNavigator.writingGridRect[1] +
-                                (contentItem.height
-                                 - writeNavigator.writingGridRect[3]
-                                 + writeNavigator.writingGridRect[1])
-                                / 2
-                    else
-                        return (paper.y - viewport.height / 2) / paper.scale
-                                + contentItem.height / 2
-                } else {
+                } else
+                    return 0
+            });
+            canvasSnapshot.y = Qt.binding(function () {
+                if (viewport) {
                     return paper.y / paper.scale
                             + (contentItem.height - viewportHeight) / 2
-                }
-            } else
-                return 0
-        });
+                } else
+                    return 0
+            });
+        }
     }
 
-    states: [
-        State{
-            name: ""
-            PropertyChanges {
-                target: preview
-                y: -height
-            }
-        },
-        State {
-            name: "zoomed"
-            when: viewport && writeNavigator && viewport.zoomed
-            PropertyChanges {
-                target: preview
-                y: 0
-            }
-        }
-    ]
     Component.onCompleted: {
         if (viewportIndicator)
             viewportIndicator.parent = canvasSnapshot

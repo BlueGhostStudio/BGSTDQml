@@ -8,7 +8,8 @@ QtObject {
     id: writeNavigator
     readonly property HWViewport viewport: HWViewport.viewport
     readonly property HWPaper paper: viewport.paper
-    readonly property HWWriter writer: viewport.canvas
+    readonly property HWWriter writer: viewport.paper ? viewport.paper.canvas
+                                                      : null
 
     property bool writeEndTimeOut: false
     property bool autoScroll: true
@@ -25,40 +26,46 @@ QtObject {
     }
 
     readonly property real leftMargin: {
-        if (writer.guideLine.type === HWGuideLine.Grid) {
-            var gridWidth = writer.guideLine.spacingPx * paper.scale
-            var gridCount = Math.floor(viewport.width / gridWidth)
+        if (paper) {
+            if (paper.guideLine.type === HWGuideLine.Grid) {
+                var gridWidth = paper.guideLine.spacingPx * paper.scale
+                var gridCount = Math.floor(viewport.width / gridWidth)
 
-            return (viewport.width - gridWidth * gridCount) / 2
+                return (viewport.width - gridWidth * gridCount) / 2
+            } else
+                paper.guideLine.spacingPx / 2 * paper.scale
         } else
-            writer.guideLine.spacingPx / 2 * paper.scale
+            0
     }
     readonly property real topMargin: {
-        if (writer.guideLine.type === HWGuideLine.Grid) {
-            const gridHeight = writer.guideLine.spacingPx * paper.scale
-            const gridCount = Math.max(Math.floor(viewport.height / gridHeight) - 1,
-                                       1)
+        if (paper) {
+            if (paper.guideLine.type === HWGuideLine.Grid) {
+                const gridHeight = paper.guideLine.spacingPx * paper.scale
+                const gridCount = Math.max(Math.floor(viewport.height / gridHeight) - 1,
+                                           1)
 
-            return Math.max((viewport.height - gridHeight * gridCount) / 2,
-                            0)
-        } else {
-            const scale = paper.scale
-            const spacingPx = writer.guideLine.spacingPx * scale
-            const lineHeightPx = writer.guideLine.lineHeightPx * scale
-            const gridHeight = lineHeightPx + spacingPx
-            const viewportHeight = viewport.height + spacingPx
-            const gridCount = Math.max(Math.floor(viewportHeight / gridHeight) - 1,
-                                       1)
+                return Math.max((viewport.height - gridHeight * gridCount) / 2,
+                                0)
+            } else {
+                const scale = paper.scale
+                const spacingPx = paper.guideLine.spacingPx * scale
+                const lineHeightPx = paper.guideLine.lineHeightPx * scale
+                const gridHeight = lineHeightPx + spacingPx
+                const viewportHeight = viewport.height + spacingPx
+                const gridCount = Math.max(Math.floor(viewportHeight / gridHeight) - 1,
+                                           1)
 
-            return Math.max((viewportHeight - gridHeight * gridCount) / 2,
-                            0)
-        }
+                return Math.max((viewportHeight - gridHeight * gridCount) / 2,
+                                0)
+            }
+        } else
+            0
     }
 
     property var writingRect: []
     property var writingGridRect: []
 
-    readonly property QtObject writingIndicatorRect: QtObject {
+    /*readonly property QtObject writingIndicatorRect: QtObject {
         property real x: {
             (writingGridRect.length > 0 ? writingGridRect[0] : 0)
                     * paper.scale + paper.x
@@ -78,7 +85,7 @@ QtObject {
         readonly property bool visible: viewport.zoomed
                                         && writingRect.length > 0
                                         && writingGridRect.length > 0
-    }
+    }*/
 
     /*property Item writingIndicator: Canvas {
         x: writeNavigator.writingIndicatorRect.x - 10
@@ -105,8 +112,29 @@ QtObject {
     property int navButtonOrientation: Qt.Vertical
     readonly property bool navBtnVisible: viewport.zoomed && !writer.writing && writeEndTimeOut
 
-    property list<Item> extToolBar0: []
-    property list<Item> extToolBar1: []
+    property list<Action> extToolBar0Actions: []
+    property list<Action> extToolBar1Actions: []
+    /*property Instantiator extToolBar0Buttons: Instantiator {
+        asynchronous: true
+        model: extToolBar0Actions
+        Button {
+            action: modelData
+            visible: navButtonOrientation === Qt.Vertical
+                     && (action.visibleWhenZoomed ?
+                             viewport.zoomed : true)
+        }
+    }
+    property Instantiator extToolBar1Buttons: Instantiator {
+        asynchronous: true
+        model: extToolBar1Actions
+        Button {
+            action: modelData
+            visible: navButtonOrientation === Qt.Vertical
+                     && (action.visibleWhenZoomed ?
+                             viewport.zoomed : true)
+            Component.onCompleted: console.log("index", index, modelData)
+        }
+    }*/
 
     property ColumnLayout vToolBar: ColumnLayout {
         parent: viewport
@@ -116,15 +144,16 @@ QtObject {
         anchors.verticalCenter: parent.verticalCenter
         anchors.rightMargin: 6
 
+        z: 2
+
         ColumnLayout {
             id: clExtToolBar0
             Repeater {
-                model: extToolBar0
-                LayoutItemProxy {
-                    visible: navButtonOrientation === Qt.Vertical
-                             && (modelData.visibleWhenZoomed ?
-                                     viewport.zoomed : true)
-                    target: modelData
+                model: extToolBar0Actions
+                Button {
+                    action: modelData
+                    visible: modelData.visibleWhenZoomed
+                             ? viewport.zoomed : true
                 }
             }
         }
@@ -162,12 +191,11 @@ QtObject {
         ColumnLayout {
             id: clExtToolBar1
             Repeater {
-                model: extToolBar1
-                LayoutItemProxy {
-                    visible: navButtonOrientation === Qt.Vertical
-                             && (modelData.visibleWhenZoomed ?
-                                     viewport.zoomed : true)
-                    target: modelData
+                model: extToolBar1Actions
+                Button {
+                    action: modelData
+                    visible: modelData.visibleWhenZoomed
+                             ? viewport.zoomed : true
                 }
             }
         }
@@ -181,15 +209,16 @@ QtObject {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 6
 
+        z: 2
+
         RowLayout {
             id: rlExtToolBar0
             Repeater {
-                model: extToolBar0
-                LayoutItemProxy {
-                    visible: navButtonOrientation === Qt.Horizontal
-                             && (modelData.visibleWhenZoomed ?
-                                     viewport.zoomed : true)
-                    target: modelData
+                model: extToolBar0Actions
+                Button {
+                    action: modelData
+                    visible: modelData.visibleWhenZoomed
+                             ? viewport.zoomed : true
                 }
             }
         }
@@ -227,12 +256,11 @@ QtObject {
         RowLayout {
             id: rlExtToolBar1
             Repeater {
-                model: extToolBar1
-                LayoutItemProxy {
-                    visible: navButtonOrientation === Qt.Horizontal
-                             && (modelData.visibleWhenZoomed ?
-                                     viewport.zoomed : true)
-                    target: modelData
+                model: extToolBar1Actions
+                Button {
+                    action: modelData
+                    visible: modelData.visibleWhenZoomed
+                             ? viewport.zoomed : true
                 }
             }
         }
@@ -268,15 +296,15 @@ QtObject {
     property real previewPanelWidth: viewport.width
     property real previewPanelHeight: 64
 
-    property HWViewportPreview preview
+    property HWNavigatorPreview preview
 
     function nextEmptySpace() {
         viewport.panToX(writingGridRect[2], leftMargin)
     }
 
     function nextEmptyLine() {
-        viewport.panToX(writer.guideLine.horizontalPaddingPx, leftMargin)
-        viewport.panToY(writingGridRect[3] + writer.guideLine.spacingPx,
+        viewport.panToX(paper.guideLine.horizontalPaddingPx, leftMargin)
+        viewport.panToY(writingGridRect[3] + paper.guideLine.spacingPx,
                         topMargin)
     }
 
@@ -290,11 +318,11 @@ QtObject {
             writingRect[3] = Math.max(writingRect[3], pos.y)
         }
 
-        const horPadding = writer.guideLine.horizontalPaddingPx
-        const topPadding = writer.guideLine.topPaddingPx
-        const spacing = writer.guideLine.spacingPx
+        const horPadding = paper.guideLine.horizontalPaddingPx
+        const topPadding = paper.guideLine.topPaddingPx
+        const spacing = paper.guideLine.spacingPx
 
-        if (writer.guideLine.type === HWGuideLine.Grid) {
+        if (paper.guideLine.type === HWGuideLine.Grid) {
             const leftCount = Math.floor((writingRect[0] - horPadding) / spacing)
             const left = horPadding + spacing * leftCount
 
@@ -325,18 +353,43 @@ QtObject {
 
             writingGridRect[3] = writingGridRect[1] + spacing
         } else {
-            const lineHeight = writer.guideLine.lineHeightPx + spacing
+            const lineHeight = paper.guideLine.lineHeightPx + spacing
 
             const topCount = Math.floor((writingRect[1] - topPadding + spacing) /
                                         lineHeight)
             writingGridRect[0] = writingRect[0]
             writingGridRect[1] = topPadding + lineHeight * topCount
             writingGridRect[2] = writingRect[2]
-            writingGridRect[3] = writingGridRect[1] + writer.guideLine.lineHeightPx
+            writingGridRect[3] = writingGridRect[1] + paper.guideLine.lineHeightPx
         }
 
         writingRectChanged()
         writingGridRectChanged()
+    }
+
+    property Connections connections: Connections {
+        target: viewport.paper ? viewport.paper.canvas : null
+        function onWriteStart(pos) {
+            if (!writingTimer.running)
+                writingRect = []
+            else
+                writingTimer.stop()
+
+            updateWritingRect(pos)
+        }
+        function onWriteUpdated(stroke) {
+            updateWritingRect(stroke.pos)
+        }
+        function onWriteEnd(stroke) {
+            writingTimer.restart()
+        }
+        function onWriteIgnore() {
+            writingTimer.stop()
+        }
+    }
+
+    onWriterChanged: {
+        writeEndTimeOut = false
     }
 
     Component.onCompleted: {
@@ -347,10 +400,16 @@ QtObject {
             preview.parent = viewport
             preview.viewport = viewport
             preview.writeNavigator = writeNavigator
-            preview.scrollEnabled = false
+            // preview.scrollEnabled = false
+            // preview.snapshot.live = false
+            writer.writingChanged.connect(
+                        () => {
+                            if (!writer.writing)
+                                preview.grabSnapshot()
+                        })
         }
 
-        viewport.canvas.writeStart.connect(
+        /*viewport.paper.canvas.writeStart.connect(
                     (pos) => {
                         if (!writingTimer.running)
                             writingRect = []
@@ -359,17 +418,17 @@ QtObject {
 
                         updateWritingRect(pos)
                     })
-        viewport.canvas.writeUpdated.connect(
+        viewport.paper.canvas.writeUpdated.connect(
                     (stroke) => {
                         updateWritingRect(stroke.pos)
                     })
-        viewport.canvas.writeEnd.connect(
+        viewport.paper.canvas.writeEnd.connect(
                     (stroke) => {
                         writingTimer.restart()
                     })
-        viewport.canvas.writeIgnore.connect(
+        viewport.paper.canvas.writeIgnore.connect(
                     () => {
                         writingTimer.stop()
-                    })
+                    })*/
     }
 }

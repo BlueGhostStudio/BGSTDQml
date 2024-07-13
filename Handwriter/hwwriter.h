@@ -2,7 +2,7 @@
 #define HWWRITER_H
 
 #include <hwcanvas.h>
-#include <hwguideline.h>
+// #include <hwguideline.h>
 #include <strokepoint.h>
 
 #include <QQmlEngine>
@@ -12,23 +12,26 @@ class HWWriter : public HWCanvas {
     Q_OBJECT
     QML_ELEMENT
 
-    Q_PROPERTY(HWGuideLine* guideLine READ guideLine CONSTANT)
+    // Q_PROPERTY(HWGuideLine* guideLine READ guideLine CONSTANT)
 
-    Q_PROPERTY(QJSValue strokeOptions READ strokeOptions WRITE setStrokeOptions
-                   NOTIFY strokeOptionsChanged)
+    Q_PROPERTY(QJSValue writeParameter READ writeParameter WRITE
+                   loadWriteParameter NOTIFY writeParameterChanged)
     Q_PROPERTY(StrokeType strokeType READ strokeType WRITE setStrokeType NOTIFY
                    strokeTypeChanged)
     Q_PROPERTY(StrokeColor strokeColor READ strokeColor WRITE setStrokeColor
                    NOTIFY strokeColorChanged)
     Q_PROPERTY(qreal strokeSize READ strokeSize WRITE setStrokeSize NOTIFY
                    strokeSizeChanged)
+
+    Q_PROPERTY(int velocityFactor READ velocityFactor WRITE setVelocityFactor
+                   NOTIFY velocityFactorChanged)
     Q_PROPERTY(qreal velocityThreshold READ velocityThreshold WRITE
                    setVelocityThreshold NOTIFY velocityThresholdChanged)
     Q_PROPERTY(qreal scaledVelocityThreshold READ scaledVelocityThreshold NOTIFY
                    scaledVelocityThresholdChanged)
     Q_PROPERTY(qreal maxVelocity READ maxVelocity NOTIFY maxVelocityChanged)
-    Q_PROPERTY(
-        qreal combinedScale READ combinedScale NOTIFY combinedScaleChanged)
+    /*Q_PROPERTY(
+        qreal combinedScale READ combinedScale NOTIFY combinedScaleChanged)*/
     Q_PROPERTY(qreal minPenSize READ minPenSize WRITE setMinPenSize NOTIFY
                    minPenSizeChanged)
 
@@ -47,6 +50,10 @@ class HWWriter : public HWCanvas {
 
     Q_PROPERTY(bool writing READ writing NOTIFY writingChanged)
 
+    Q_PROPERTY(WriteParameterMethod writeParameterMethod READ
+                   writeParameterMethod CONSTANT)
+    Q_PROPERTY(int writeParameterIndex READ writeParameterIndex CONSTANT)
+
 public:
     HWWriter(QQuickItem* parent = nullptr);
 
@@ -56,29 +63,49 @@ public:
     enum StrokeColor { Black, Blue, Red, Yellow, Green, Cyan, Purple };
     Q_ENUM(StrokeColor)
 
+    enum WriteParameterMethod { Custom, Preset, UseSaved };
+    Q_ENUM(WriteParameterMethod)
+
     /*enum PressureSupport { None, Pressure, TouchSize };
     Q_ENUM(PressureSupport)*/
 
     void classBegin() override;
     void componentComplete() override;
 
-    Q_INVOKABLE void loadSettings();
-    Q_INVOKABLE bool loadSettings(int preset);
-    Q_INVOKABLE void loadSettings(const QJSValue& strokeOptions);
+    Q_INVOKABLE void loadDefaultWriteParameter();
+    Q_INVOKABLE bool loadPresetWriteParameter(int preset);
+    Q_INVOKABLE bool loadUserSavedWriteParameter(int userSaved);
 
-    HWGuideLine* guideLine() const;
+    void loadWriteParameter(const QJSValue& writeParameter);
+    QJSValue writeParameter() const;
+    Q_INVOKABLE void saveUserSavedWriteParameter(
+        const QJSValue& writeParameter);
+    Q_INVOKABLE void updateUserSavedWriteParameter(
+        int index, const QJSValue& writeParameter);
+    Q_INVOKABLE void removeUserSavedWriteParameter(int index);
 
-    void setStrokeOptions(const QJSValue& options);
-    QJSValue strokeOptions() const;
+    // HWGuideLine* guideLine() const;
 
-    void setStrokeType(StrokeType type);
+    /*void setStrokeOptions(const QJSValue& options);
+    QJSValue strokeOptions() const;*/
+
+    void setStrokeType(StrokeType type, bool adjusted = true);
     StrokeType strokeType() const;
 
-    void setStrokeColor(StrokeColor color);
+    void setStrokeColor(StrokeColor color /*, bool adjusted = true*/);
     StrokeColor strokeColor() const;
 
-    void setStrokeSize(qreal size);
+    void setStrokeSize(qreal size, bool adjusted = true);
     qreal strokeSize() const;
+
+    void setMinPenSize(qreal size, bool adjusted = true);
+    qreal minPenSize() const;
+
+    void setFadeoutLimit(qreal fol, bool adjusted = true);
+    qreal fadeoutLimit() const;
+
+    void setFadeinLimit(qreal fil, bool adjusted = true);
+    qreal fadeinLimit() const;
 
     /*void setPressureSupport(PressureSupport type);
     PressureSupport pressureSupport() const;
@@ -98,22 +125,16 @@ public:
     /*qreal minPE() const;
     qreal maxPE() const;*/
 
-    void setVelocityThreshold(qreal vel);
+    int velocityFactor() const;
+    void setVelocityFactor(int scaleAdjustsVelocity);
+
+    void setVelocityThreshold(qreal vel, bool adjusted = true);
     qreal velocityThreshold() const;
 
     qreal scaledVelocityThreshold() const;
 
     qreal maxVelocity() const;
-    qreal combinedScale() const;
-
-    void setMinPenSize(qreal size);
-    qreal minPenSize() const;
-
-    void setFadeoutLimit(qreal fol);
-    qreal fadeoutLimit() const;
-
-    void setFadeinLimit(qreal fil);
-    qreal fadeinLimit() const;
+    // qreal combinedScale() const;
 
     void setReadOnly(bool ro);
     bool readOnly() const;
@@ -123,12 +144,16 @@ public:
     void setStrokeSizeCalc(const QJSValue& callback);
     QJSValue strokeSizeCalc() const;
 
+    WriteParameterMethod writeParameterMethod() const;
+    int writeParameterIndex() const;
+
     Q_INVOKABLE qreal fadeLimitCalc(qreal preSize, qreal size) const;
 
     bool recording() const;
     Q_INVOKABLE void record();
     Q_INVOKABLE void stopRecord();
     Q_INVOKABLE void replayRecord();
+    Q_INVOKABLE QVariantList exportRecord();
     Q_INVOKABLE void resetRecord();
     // Q_INVOKABLE void replayStrokesWrite(const QJSValue& strokes);
 
@@ -136,15 +161,19 @@ public:
     Q_INVOKABLE Stroke penSegment(const StrokePoint& point, bool signal = true);
 
 signals:
-    void clicked(const QPointF& pos);
-
     void writeStart(const QPointF& pos, const StrokePoint& point);
     void writeUpdated(const Stroke& stroke, const StrokePoint& point);
     void writeEnd();
     void writeIgnore();
 
-    void strokeOptionsChanged();
+    void writeParameterChanged(WriteParameterMethod method, int index);
+    void userSavedWriteParameterSaved(int index,
+                                      const QJSValue& writeParameter);
+    void userSavedWriteParameterUpdated(int index,
+                                        const QJSValue& writeParameter);
+    void userSavedWriteParameterRemoved(int index);
 
+    void strokeAdjusted();
     void strokeTypeChanged();
     void strokeColorChanged();
     void strokeSizeChanged();
@@ -157,9 +186,11 @@ signals:
     void minEllipseDiametersChanged();
     void maxEllipseDiametersChanged();*/
 
+    void velocityFactorChanged();
     void velocityThresholdChanged();
     void maxVelocityChanged();
-    void combinedScaleChanged();
+    // void combinedScaleChanged();
+    void scaledVelocityThresholdChanged();
 
     void minPenSizeChanged();
     void readOnlyChanged();
@@ -176,10 +207,8 @@ signals:
 
     void writingChanged();
 
-    void scaledVelocityThresholdChanged();
-
-private slots:
-    void cumulativeScale();
+    /*private slots:
+        void cumulativeScale();*/
 
 private:
     // qreal getPE(const t_strokePoint& point) const;
@@ -193,6 +222,7 @@ private:
 
 protected:
     void replayStrokesWrite(const QList<StrokePoint>& strokePoints);
+    void replayStrokesWrite(const QVariantList& strokePoints);
 
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -201,12 +231,13 @@ protected:
 
 protected:
     quint64 m_pressTimeStamp = 0;
-    HWGuideLine* m_guideLine = nullptr;
+    // HWGuideLine* m_guideLine = nullptr;
     QPointF m_prePos;
     qreal m_preSize;
+    bool m_penDownStrokeDrawed = false;
 
     int m_strokeType;
-    int m_strokeColor;
+    int m_strokeColor = Black;
     qreal m_strokeSize;
 
     /*PressureSupport m_pressureSupport;
@@ -219,7 +250,7 @@ protected:
 
     qreal m_velocityThreshold;
     qreal m_maxVelocity = 0;
-    qreal m_combinedScale = 1.00;
+    // qreal m_combinedScale = 1.00;
 
     qreal m_minPenSize;
     // qreal m_maxPenSizeRatio = 2;
@@ -238,6 +269,11 @@ protected:
     bool m_record = false;
     // QList<QPair<int, StrokePoint>> m_recordedStrokes;
     QList<StrokePoint> m_recordedStrokes;
+    bool m_replaying = false;
+    int m_velocityFactor = -1;
+
+    WriteParameterMethod m_writeParameterMethod = Custom;
+    int m_writeParameterIndex = -1;
 };
 
 #endif  // HWWRITER_H

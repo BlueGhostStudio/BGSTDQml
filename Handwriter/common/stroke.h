@@ -3,6 +3,7 @@
 
 #include <QQmlEngine>
 #include <QtCore>
+#include <QColor>
 
 struct Stroke {
     Q_GADGET
@@ -26,6 +27,8 @@ public:
     int color = -1;
     qreal size = -1;
     qreal preSize = -1;
+
+    static QColor darkColor(const QColor& color);
 };
 
 #endif  // STROKE_H

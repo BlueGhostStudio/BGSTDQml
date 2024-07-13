@@ -199,7 +199,12 @@ qt_add_qml_module(
               icons/close.png
               icons/target.png
               icons/view.png
+              icons/magnifier.png
+              icons/save.png
+              icons/return.png
+              icons/enter.png
               MaterialIcons-Regular.ttf
+              icons/toggle_toolbar.png
     # NO_GENERATE_PLUGIN_SOURCE
 )
 

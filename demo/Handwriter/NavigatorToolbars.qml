@@ -9,33 +9,39 @@ QtObject {
     signal clear()
     signal openStrokeAdjustmentDrawer()
     signal openPreviewDrawer()
-    signal exportToImage()
+    signal saveFile()
+    signal loadFile()
 
-    property list<Item> extToolBar0: [Button {
+    property list<Action> extToolBar0: [Action {
             icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/menu.png"
 
-            Menu {
-                id: mainMenu
-
+            property Menu menu: Menu {
                 MenuItem {
                     text: "Clear"
                     onTriggered: clear()//viewport.canvas.clear()
                 }
                 MenuItem {
-                    text: "Export to image"
-                    onTriggered: exportToImage()
+                    text: "Load"
+                    onTriggered: loadFile()
+                }
+                MenuItem {
+                    text: "Save"
+                    onTriggered: saveFile()
                 }
             }
 
-            onClicked: mainMenu.open()
-        }, Button {
+            onTriggered: function (source) {
+                menu.parent = source
+                menu.open()
+            }
+        }, Action {
             icon.source: "qrc:/qt/qml/BGStudio/Handwriter/icons/quill_pen.png"
-            onClicked: openStrokeAdjustmentDrawer()//rightDrawer.open()
+            onTriggered: openStrokeAdjustmentDrawer()//rightDrawer.open()
         }]
-    property list<Item> extToolBar1: [Button {
+    property list<Action> extToolBar1: [Action {
             icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/view.png"
             property bool visibleWhenZoomed: true
 
-            onClicked: openPreviewDrawer()//previewDrawer.open()
+            onTriggered: openPreviewDrawer()//previewDrawer.open()
         }]
 }

@@ -5,15 +5,26 @@
 #include <QSGFlatColorMaterial>
 #include <QSGNode>
 
-#include "dataconversion.h"
+// #include "dataconversion.h"
 #include "strokegeometrynode.h"
+
+#define CACHEROW 60
+#define CACHEHEIGHT 25
+#define CACHECOL 15
+#define CACHEWIDTH 100
+#define CACHESIZE CACHECOL* CACHEROW
+
+class HWCanvas;
 
 class ContentNode : public QSGNode {
 public:
-    ContentNode();
+    ContentNode(HWCanvas* item);
     ~ContentNode();
 
     // void preprocess() override;
+
+    QList<Stroke> strokes() const;
+    QList<Stroke> currentLineStrokes() const;
 
     void clear();
     void addPendingRenderNode(const Stroke& stroke);
@@ -26,12 +37,18 @@ public:
     void setDark(bool dark);
     bool isDark() const;
 
-    void setActiveNodes(int active);
-    int activeNodes() const;
+    void activeCache();
+
+    void setRenderRange(int range);
+    int renderRange() const;
+    /*void setActiveNodes(int active);
+    int activeNodes() const;*/
     // QSGNode* activeNodesNode();
 
 private:
     // void updateRange(const Stroke& stroke);
+    /*QList<Stroke>&& strokes(const QPair<int, int>& rowRange,
+                          const QPair<int, int>& colRange);*/
 
 private:
     // QQuickItem* m_quickItem;
@@ -42,14 +59,20 @@ private:
     bool m_requestClear = true;
     QList<StrokeGeometryNode*> m_pendingRenderNodes;
 
-    QSGNode m_activeWritingStrokeNodes;
-    QSGNode m_inactiveWritingStrokeNodes;
+    // QSGNode m_activeWritingStrokeNodes;
+    // QSGNode m_inactiveWritingStrokeNodes;
+
+    HWCanvas* m_ownItem;
+    QSGNode* m_cache = new QSGNode[CACHESIZE];
+    QPair<int, int> m_activeCacheRowRange{ -1, -1 };
+    QPair<int, int> m_activeCacheColRange{ -1, -1 };
+    QSGNode* m_activeCacheNode = new QSGNode;
 
     QSGFlatColorMaterial m_materialPalette[7];
     QSGFlatColorMaterial m_materialDarkPalette[7];
     bool m_dark = false;
 
-    int m_activeNodes = -1;
+    int m_renderRange = 0;
 };
 
 #endif  // CONTENTNODE_H

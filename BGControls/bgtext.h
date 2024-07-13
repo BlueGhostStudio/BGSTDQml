@@ -31,7 +31,8 @@ public:
         Body2,
         Button,
         Caption,
-        Overline
+        Overline,
+        UiHeader
     };
     Q_ENUM(TextType)
 
@@ -116,7 +117,12 @@ private:
           { { "size", 7.5 },
             { "letterSpacing", 1.5 },
             { "weight", QFont::Normal },
-            { "cap", QFont::AllUppercase } } }
+            { "cap", QFont::AllUppercase } } },
+        { UiHeader,
+          { { "size", 18 },
+            { "letterSpacing", 0.25 },
+            { "weight", QFont::Bold },
+            { "cap", QFont::MixedCase } } }
     };
 
     TextType m_textScale = Body1;
