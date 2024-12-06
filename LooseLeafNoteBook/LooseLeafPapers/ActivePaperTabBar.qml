@@ -11,7 +11,7 @@ TabBar {
     position: TabBar.Footer
 
     Repeater {
-        model: ActivePaperList.activePapersIndex
+        model: activePaperList.activePapersIndex
 
         TabButton {
             required property int pid
@@ -21,7 +21,7 @@ TabBar {
                      && viewport.paper.localStorageID === pid
 
             onClicked: {
-                ActivePaperList.openPaper(pid)
+                activePaperList.openPaper(pid)
             }
         }
     }

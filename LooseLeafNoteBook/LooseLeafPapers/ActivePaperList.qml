@@ -1,11 +1,11 @@
-pragma Singleton
+// pragma Singleton
 
 import QtQuick
 import BGStudio.Handwriter
 
 QtObject {
     property ListModel activePapersIndex: ListModel {}
-    property list<LooseLeafPaper> activePapers: []
+    property list<Item> activePapers: []
     property Component cmpPaper: Component {
         LooseLeafPaper {}
     }
@@ -33,6 +33,7 @@ QtObject {
 
         return paper
     }
+
     function closePaper(pid) {
         if (pid > 0) {
             let i = activePapers.findIndex((p) => p.localStorageID === pid)
@@ -50,9 +51,5 @@ QtObject {
                 }
             }
         }
-
-        /*const i = findActivePaperIndex(pid)
-        if (i !== -1)
-            activePapersIndex.remove(i)*/
     }
 }

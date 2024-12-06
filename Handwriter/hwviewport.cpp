@@ -553,6 +553,8 @@ HWViewport::touchEvent(QTouchEvent* event) {
 
     event->addPassiveGrabber(p0, this);
 
+    qDebug() << "aaaaaaaa" << event->touchPointStates();
+
     if (event->pointCount() >= 2) {
         QPointF ps1 = event->point(1).position();
 

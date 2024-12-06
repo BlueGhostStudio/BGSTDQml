@@ -13,7 +13,11 @@ ApplicationWindow {
 
     visible: true
 
-    MainForm {
+    /*LLPs.MainForm {
+        anchors.fill: parent
+    }*/
+
+    LooseLeafNoteBookStackView {
         anchors.fill: parent
     }
 

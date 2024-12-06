@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import BGStudio.Controls
 import BGStudio.Handwriter
 
+import LooseLeafNoteBook
 
 ListView {
     id: looseLeafPapers
@@ -41,26 +42,6 @@ ListView {
 
     orientation: ListView.Horizontal
 
-    Image {
-        id: cover
-        width: looseLeafPapers.width
-        height: looseLeafPapers.height
-        z: 10
-
-        fillMode: Image.PreserveAspectCrop
-
-        source: "qrc:/qt/qml/BGStudio/Handwriter/imgs/cover3.png"
-
-        MouseArea {
-            anchors.fill: parent
-            preventStealing: true
-
-            onClicked: {
-                looseLeafPapers.state = "papers"
-            }
-        }
-    }
-
     delegate:  Item {
         readonly property real sizeRatio: hwPaperPreview.implicitWidth
                                           / hwPaperPreview.implicitHeight
@@ -94,7 +75,7 @@ ListView {
                     visible: looseLeafPapers.currentIndex === index
 
                     onClicked: {
-                        ActivePaperList.openPaper(model.display)
+                        activePaperList.openPaper(model.display)
                     }
                 }
 
@@ -120,53 +101,4 @@ ListView {
             Component.onCompleted: loadLocalStorageData(model.display)
         }
     }
-
-    onHorizontalOvershootChanged: {
-        if (horizontalOvershoot < -50) {
-            looseLeafPapers.state = "cover"
-        }
-    }
-
-    state: "cover"
-
-    states: [
-        State {
-            name: "cover"
-
-            PropertyChanges {
-                target: cover
-                x: 0
-            }
-            StateChangeScript {
-                script: AndroidInterface.screenOrientation = 1
-            }
-        },
-        State {
-            name: "papers"
-
-            PropertyChanges {
-                target: cover
-                x: -width
-            }
-            StateChangeScript {
-                script: AndroidInterface.screenOrientation = -1
-            }
-        }
-    ]
-
-    transitions: [
-        Transition {
-            id: transition
-            SequentialAnimation {
-                PauseAnimation {
-                    duration: 50
-                }
-
-                PropertyAnimation {
-                    target: cover
-                    property: "x"
-                }
-            }
-        }
-    ]
 }

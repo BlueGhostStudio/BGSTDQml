@@ -5,6 +5,8 @@ import QtQuick.Layouts
 import BGStudio.Controls
 import BGStudio.Handwriter
 
+import LooseLeafNoteBook
+
 HWViewport {
     id: viewport
 
@@ -33,10 +35,15 @@ HWViewport {
         icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/close.png"
 
         onTriggered: {
-            viewport.paper.close()
+            activePaperList.closePaper(viewport.paper.localStorageID)
         }
     }
-    property Action actToggleToolbar: Action {
+    property Action actMenu: Action {
+        icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/menu.png"
+    }
+
+    Action {
+        id: actToggleToolbar
         icon.source: "qrc:/qt/qml/BGStudio/Controls/icons/toggle_toolbar.png"
 
         onTriggered: {
@@ -72,7 +79,7 @@ HWViewport {
     }
 
     /*Connections {
-        target: ActivePaperList
+        target: activePaperList
         onClosingPaper: (pid) => {
                             if (paper && paper.localStorageID === pid) {
                                 paper = null

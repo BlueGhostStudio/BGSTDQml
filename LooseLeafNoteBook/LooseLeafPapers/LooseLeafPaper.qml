@@ -25,10 +25,10 @@ HWPaper {
     function saveNClose() {
         if (isModified)
             save()
-        ActivePaperList.closePaper(localStorageID)
+        activePaperList.closePaper(localStorageID)
     }
 
-    function close() {
-        ActivePaperList.closePaper(localStorageID)
-    }
+    /*function close() {
+        activePaperList.closePaper(localStorageID)
+    }*/
 }

@@ -6,13 +6,17 @@ import BGStudio.Controls
 
 Page {
     id: page
+
+    property ActivePaperList activePaperList: ActivePaperList {
+        cmpPaper: LooseLeafPaper {}
+    }
+
     ToolBar {
         id: toolBar
 
         width: parent.width
 
-        visible: (page.state === "looseLeafPaperListShow"
-                  && looseLeafPaperList.state != "cover")
+        visible: page.state === "looseLeafPaperListShow"
                  || looseLeafViewport.uiMode === LooseLeafViewport.NavigationMode
 
         RowLayout {
@@ -45,6 +49,10 @@ Page {
             }
 
             ToolButton {
+                action: looseLeafViewport.actMenu
+            }
+
+            ToolButton {
                 action: looseLeafViewport.actClose
             }
         }
@@ -53,8 +61,7 @@ Page {
     ActivePaperTabBar {
         id: activePaperTabBar
 
-        visible: (page.state === "looseLeafPaperListShow"
-                  && looseLeafPaperList.state != "cover")
+        visible: page.state === "looseLeafPaperListShow"
                  || looseLeafViewport.uiMode === LooseLeafViewport.NavigationMode
 
         viewport: looseLeafViewport
@@ -74,9 +81,8 @@ Page {
             id: looseLeafPaperList
 
             anchors.fill: parent
-            anchors.topMargin: looseLeafPaperList.state === "cover" ? 0 : toolBar.height
-            anchors.bottomMargin: looseLeafPaperList.state
-                                  === "cover" ? 0 : activePaperTabBar.height
+            anchors.topMargin: toolBar.height
+            anchors.bottomMargin: activePaperTabBar.height
 
             contentItem.anchors.margins: 10
 
@@ -99,7 +105,7 @@ Page {
         }
 
         Connections {
-            target: ActivePaperList
+            target: activePaperList
 
             function onPaperOpened(paper) {
                 looseLeafViewport.assignPaper(paper)
@@ -176,7 +182,7 @@ Page {
 }
 /*##^##
 Designer {
-    D{i:0}D{i:16;transitionDuration:2000}
+    D{i:0}D{i:19;transitionDuration:2000}
 }
 ##^##*/
 

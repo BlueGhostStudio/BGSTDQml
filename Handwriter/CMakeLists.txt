@@ -126,7 +126,13 @@ qt_add_qml_module(
               PaperPanBehavior.qml
               imgs/cover1.png
               imgs/cover2.png
-              imgs/cover3.png)
+              imgs/cover3.png
+              imgs/cover4.png
+              imgs/cover5.png
+              imgs/cover6.png
+              imgs/cover7.png
+              imgs/cover8.png
+              imgs/cover9.png)
 
 set_target_properties(
     Handwriter
